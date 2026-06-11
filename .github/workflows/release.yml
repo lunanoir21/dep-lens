@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    name: Build ${{ matrix.pkg }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            pkg: dep-lens-linux-x64
+            binary: dep-lens-core
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            pkg: dep-lens-darwin-x64
+            binary: dep-lens-core
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            pkg: dep-lens-darwin-arm64
+            binary: dep-lens-core
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            pkg: dep-lens-win32-x64
+            binary: dep-lens-core.exe
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.pkg }}
+          path: target/${{ matrix.target }}/release/${{ matrix.binary }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish npm packages
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+      - name: Download binaries into platform packages
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Stage binaries
+        run: |
+          for pkg in dep-lens-linux-x64 dep-lens-darwin-x64 dep-lens-darwin-arm64; do
+            install -m 755 "artifacts/$pkg/dep-lens-core" "packages/$pkg/bin/dep-lens-core"
+          done
+          install -m 644 "artifacts/dep-lens-win32-x64/dep-lens-core.exe" \
+            "packages/dep-lens-win32-x64/bin/dep-lens-core.exe"
+      - name: Build CLI
+        run: |
+          npm install
+          npm run build:cli
+      - name: Publish platform packages
+        run: |
+          for pkg in dep-lens-linux-x64 dep-lens-darwin-x64 dep-lens-darwin-arm64 dep-lens-win32-x64; do
+            npm publish "packages/$pkg" --access public
+          done
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish main package
+        run: npm publish packages/dep-lens --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

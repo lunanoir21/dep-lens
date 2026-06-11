@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+members = ["crates/dep-lens-core"]
+# The fixture project is its own detached workspace used by the test suite.
+exclude = ["test-project"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/dep-lens/dep-lens"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1

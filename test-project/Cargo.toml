@@ -1,0 +1,15 @@
+# Fixture project used to exercise dep-lens end to end. The empty
+# [workspace] table detaches it from the repository's main workspace.
+[package]
+name = "test-project"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+exclude = ["vendor"]
+
+[dependencies]
+mit-crate = { path = "vendor/mit-crate" }
+gpl-crate = { path = "vendor/gpl-crate" }
+filelicense-crate = { path = "vendor/filelicense-crate" }

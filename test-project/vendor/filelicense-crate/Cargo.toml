@@ -1,0 +1,8 @@
+[package]
+name = "filelicense-crate"
+version = "0.3.0"
+edition = "2021"
+license-file = "COPYING"
+publish = false
+
+[workspace]

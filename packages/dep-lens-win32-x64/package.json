@@ -1,0 +1,19 @@
+{
+  "name": "dep-lens-win32-x64",
+  "version": "0.1.0",
+  "description": "dep-lens native scanner binary for Windows x64",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dep-lens/dep-lens.git"
+  },
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "bin"
+  ]
+}

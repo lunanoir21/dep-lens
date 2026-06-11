@@ -1,0 +1,49 @@
+{
+  "name": "dep-lens",
+  "version": "0.1.0",
+  "description": "License scanner for npm and Cargo dependencies with commercial risk reporting",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dep-lens/dep-lens.git"
+  },
+  "bin": {
+    "dep-lens": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "!dist/test"
+  ],
+  "engines": {
+    "node": ">=18.18"
+  },
+  "keywords": [
+    "license",
+    "spdx",
+    "compliance",
+    "dependencies",
+    "npm",
+    "cargo",
+    "cli"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "tsc && node --test \"dist/test/**/*.test.js\""
+  },
+  "dependencies": {
+    "ink": "^5.2.1",
+    "react": "^18.3.1"
+  },
+  "optionalDependencies": {
+    "dep-lens-darwin-arm64": "0.1.0",
+    "dep-lens-darwin-x64": "0.1.0",
+    "dep-lens-linux-x64": "0.1.0",
+    "dep-lens-win32-x64": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.3",
+    "typescript": "^5.5.0"
+  }
+}

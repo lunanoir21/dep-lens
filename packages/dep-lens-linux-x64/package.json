@@ -1,0 +1,19 @@
+{
+  "name": "dep-lens-linux-x64",
+  "version": "0.1.0",
+  "description": "dep-lens native scanner binary for Linux x64",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dep-lens/dep-lens.git"
+  },
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "bin"
+  ]
+}
