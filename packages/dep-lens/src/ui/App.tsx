@@ -1,5 +1,4 @@
 import { writeFile } from 'node:fs/promises';
-
 import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Text, useApp, useInput } from 'ink';
 
@@ -43,17 +42,10 @@ export function App({ report, getHtml }: AppProps): React.JSX.Element {
   const [exportCursor, setExportCursor] = useState(0);
   const [status, setStatus] = useState('');
 
-  // Transient status messages fade out on their own.
   useEffect(() => {
-    if (status.length === 0) {
-      return undefined;
-    }
-    const id = setTimeout(() => {
-      setStatus('');
-    }, STATUS_CLEAR_MS);
-    return () => {
-      clearTimeout(id);
-    };
+    if (status.length === 0) return;
+    const id = setTimeout(() => setStatus(''), STATUS_CLEAR_MS);
+    return () => clearTimeout(id);
   }, [status]);
 
   const sortColumn = SORT_COLUMNS[sortIndex] ?? 'name';
@@ -73,155 +65,100 @@ export function App({ report, getHtml }: AppProps): React.JSX.Element {
   const selectedPackage = visible[clampedCursor];
 
   function exportSelection(index: number): void {
-    if (index === 0) {
-      setStatus(format(messages.exportMenu.writing, { file: 'dep-lens-report.json' }));
-      void writeFile('dep-lens-report.json', `${JSON.stringify(report, null, 2)}\n`)
-        .then(() => {
-          setStatus(format(messages.exportMenu.wrote, { file: 'dep-lens-report.json' }));
-        })
-        .catch((error: unknown) => {
-          setStatus(format(messages.exportMenu.failed, { error: String(error) }));
-        });
-    } else if (index === 1) {
-      setStatus(format(messages.exportMenu.writing, { file: 'dep-lens-report.html' }));
-      void getHtml()
-        .then(async (html) => {
-          await writeFile('dep-lens-report.html', html);
-          setStatus(format(messages.exportMenu.wrote, { file: 'dep-lens-report.html' }));
-        })
-        .catch((error: unknown) => {
-          setStatus(format(messages.exportMenu.failed, { error: String(error) }));
-        });
-    }
+    const filename = index === 0 ? 'dep-lens-report.json' : 'dep-lens-report.html';
+    setStatus(format(messages.exportMenu.writing, { file: filename }));
+    
+    const promise = index === 0 
+      ? Promise.resolve(JSON.stringify(report, null, 2))
+      : getHtml();
+
+    promise
+      .then(async (content) => {
+        await writeFile(filename, content);
+        setStatus(format(messages.exportMenu.wrote, { file: filename }));
+      })
+      .catch((error: unknown) => {
+        setStatus(format(messages.exportMenu.failed, { error: String(error) }));
+      });
   }
 
   useInput((input, key) => {
     if (mode === 'filter') {
-      if (key.return) {
-        setMode('list');
-      } else if (key.escape) {
-        setQuery('');
-        setMode('list');
-      } else if (key.backspace || key.delete) {
-        setQuery((current) => current.slice(0, -1));
-        setCursor(0);
-      } else if (input.length > 0 && !key.ctrl && !key.meta) {
-        setQuery((current) => current + input);
-        setCursor(0);
-      }
+      if (key.return) setMode('list');
+      else if (key.escape) { setQuery(''); setMode('list'); }
+      else if (key.backspace || key.delete) { setQuery(c => c.slice(0, -1)); setCursor(0); }
+      else if (input.length > 0 && !key.ctrl && !key.meta) { setQuery(c => c + input); setCursor(0); }
       return;
     }
 
     if (mode === 'export') {
-      if (key.escape) {
-        setMode('list');
-      } else if (key.upArrow) {
-        setExportCursor((current) => Math.max(0, current - 1));
-      } else if (key.downArrow) {
-        setExportCursor((current) => Math.min(EXPORT_OPTION_COUNT - 1, current + 1));
-      } else if (key.return) {
-        exportSelection(exportCursor);
+      if (key.escape) setMode('list');
+      else if (key.upArrow) setExportCursor(c => Math.max(0, c - 1));
+      else if (key.downArrow) setExportCursor(c => Math.min(EXPORT_OPTION_COUNT - 1, c + 1));
+      else if (key.return) { exportSelection(exportCursor); setMode('list'); }
+      return;
+    }
+
+    if (mode === 'detail' || mode === 'help') {
+      if (key.escape || key.return || input === 'q' || (mode === 'help' && input === 'h')) {
         setMode('list');
       }
       return;
     }
 
-    if (mode === 'detail') {
-      if (key.escape || key.return || input === 'q') {
-        setMode('list');
-      }
-      return;
-    }
-
-    if (mode === 'help') {
-      if (key.escape || input === 'h' || input === 'q') {
-        setMode('list');
-      }
-      return;
-    }
-
-    // list mode
     const quickFilter = QUICK_FILTERS[input];
-    if (quickFilter !== undefined) {
-      // Pressing the active category again toggles it off.
-      setCategoryFilter((current) => (current === quickFilter ? null : quickFilter));
-      setCursor(0);
-    } else if (input === '0') {
-      setQuery('');
-      setCategoryFilter(null);
-      setCursor(0);
-    } else if (input === 'q') {
-      exit();
-    } else if (input === 'f') {
-      setStatus('');
-      setMode('filter');
-    } else if (input === 's') {
-      setSortIndex((current) => (current + 1) % SORT_COLUMNS.length);
-    } else if (input === 'r') {
-      setDescending((current) => !current);
-    } else if (input === 'e') {
-      setStatus('');
-      setExportCursor(0);
-      setMode('export');
-    } else if (input === 'h' || input === '?') {
-      setMode('help');
-    } else if (input === 'g') {
-      setCursor(0);
-    } else if (input === 'G') {
-      setCursor(maxCursor);
-    } else if (key.return) {
-      if (selectedPackage !== undefined) {
-        setMode('detail');
-      }
-    } else if (key.upArrow) {
-      setCursor((current) => Math.max(0, current - 1));
-    } else if (key.downArrow) {
-      setCursor((current) => Math.min(maxCursor, current + 1));
-    } else if (key.pageUp) {
-      setCursor((current) => Math.max(0, current - 10));
-    } else if (key.pageDown) {
-      setCursor((current) => Math.min(maxCursor, current + 10));
-    }
+    if (quickFilter !== undefined) { setCategoryFilter(c => c === quickFilter ? null : quickFilter); setCursor(0); }
+    else if (input === '0') { setQuery(''); setCategoryFilter(null); setCursor(0); }
+    else if (input === 'q') exit();
+    else if (input === 'f' || input === '/') { setStatus(''); setMode('filter'); }
+    else if (input === 's') setSortIndex(c => (c + 1) % SORT_COLUMNS.length);
+    else if (input === 'r') setDescending(c => !c);
+    else if (input === 'e') { setStatus(''); setExportCursor(0); setMode('export'); }
+    else if (input === 'h' || input === '?') setMode('help');
+    else if (input === 'g') setCursor(0);
+    else if (input === 'G') setCursor(maxCursor);
+    else if (key.return && selectedPackage !== undefined) setMode('detail');
+    else if (key.upArrow) setCursor(c => Math.max(0, c - 1));
+    else if (key.downArrow) setCursor(c => Math.min(maxCursor, c + 1));
+    else if (key.pageUp) setCursor(c => Math.max(0, c - 10));
+    else if (key.pageDown) setCursor(c => Math.min(maxCursor, c + 10));
   });
 
   const activeFilters: string[] = [];
-  if (query.length > 0) {
-    activeFilters.push(format(messages.filterText, { query }));
-  }
-  if (categoryFilter !== null) {
-    activeFilters.push(
-      format(messages.filterCategory, { category: messages.categories[categoryFilter] }),
-    );
-  }
+  if (query.length > 0) activeFilters.push(format(messages.filterText, { query }));
+  if (categoryFilter !== null) activeFilters.push(format(messages.filterCategory, { category: messages.categories[categoryFilter] }));
+
+  const modeLabel = mode !== 'list' ? ` [${mode.toUpperCase()}] ` : '';
 
   return (
-    <Box flexDirection="column">
-      <Header
-        project={report.project}
-        scannedAt={report.scannedAt}
-        total={report.summary.total}
-      />
-      <SummaryBar summary={report.summary} />
+    <Box flexDirection="column" paddingX={2} paddingY={1}>
+      <Header project={report.project} scannedAt={report.scannedAt} summary={report.summary} />
+      
+      <Box marginTop={1} marginBottom={1}>
+        <SummaryBar summary={report.summary} />
+      </Box>
+
       <PackageTable
         packages={visible}
         cursor={clampedCursor}
         sortColumn={sortColumn}
         descending={descending}
+        query={query}
       />
-      {mode === 'filter' ? <FilterBar query={query} /> : null}
-      {mode === 'export' ? <ExportMenu cursor={exportCursor} /> : null}
-      {mode === 'detail' && selectedPackage !== undefined ? (
-        <DetailPane pkg={selectedPackage} />
-      ) : null}
-      {mode === 'help' ? <HelpOverlay /> : null}
-      <Box paddingX={1}>
-        <Text color="gray">
-          {activeFilters.length > 0 && mode !== 'filter'
-            ? `${format(messages.filtersLabel, { list: activeFilters.join(', ') })}  `
-            : ''}
-          {status.length > 0 ? `${status}  ` : ''}
-          {messages.footer}
-        </Text>
+
+      <Box marginTop={1} flexDirection="column">
+        {mode === 'filter' && <FilterBar query={query} />}
+        {mode === 'export' && <ExportMenu cursor={exportCursor} />}
+        {mode === 'detail' && selectedPackage !== undefined && <DetailPane pkg={selectedPackage} />}
+        {mode === 'help' && <HelpOverlay />}
+        
+        <Box paddingX={1} marginTop={1} borderStyle="round" borderColor="gray">
+          <Text color="gray">
+            <Text bold color="cyan">{modeLabel}</Text>
+            {activeFilters.length > 0 && mode !== 'filter' && <Text color="yellow">({activeFilters.join(', ')}) </Text>}
+            {status.length > 0 ? <Text color="green">{status} </Text> : messages.footer}
+          </Text>
+        </Box>
       </Box>
     </Box>
   );

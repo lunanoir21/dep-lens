@@ -42,6 +42,27 @@ pub fn parse_metadata(raw: &str) -> Result<Vec<Package>, String> {
         .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect())
         .unwrap_or_default();
 
+    let mut direct_ids = HashSet::new();
+    if let Some(nodes) = value
+        .get("resolve")
+        .and_then(|r| r.get("nodes"))
+        .and_then(|n| n.as_array())
+    {
+        for node in nodes {
+            if let Some(id) = node.get("id").and_then(|v| v.as_str()) {
+                if members.contains(id) {
+                    if let Some(deps) = node.get("dependencies").and_then(|d| d.as_array()) {
+                        for dep_id in deps {
+                            if let Some(s) = dep_id.as_str() {
+                                direct_ids.insert(s);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     let mut packages = Vec::new();
     if let Some(list) = value.get("packages").and_then(|p| p.as_array()) {
         for pkg in list {
@@ -68,20 +89,24 @@ pub fn parse_metadata(raw: &str) -> Result<Vec<Package>, String> {
             } else {
                 LicenseSource::None
             };
-            // Crates may point at a license file instead of declaring an
-            // SPDX expression (`license-file` in Cargo.toml).
             if license.is_none() {
                 if let Some(detected) = detect_from_license_file(pkg) {
                     license = Some(detected);
                     license_source = LicenseSource::LicenseFile;
                 }
             }
+            let dependency_type = if direct_ids.contains(id) {
+                crate::model::DependencyType::Direct
+            } else {
+                crate::model::DependencyType::Transitive
+            };
             packages.push(Package {
                 name: name.to_string(),
                 version,
                 license,
                 license_source,
                 ecosystem: Ecosystem::Cargo,
+                dependency_type,
             });
         }
     }

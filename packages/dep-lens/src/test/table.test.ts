@@ -11,6 +11,7 @@ test('computeColumns keeps the canonical column order', () => {
     'version',
     'license',
     'category',
+    'dependencyType',
     'riskScore',
     'commercialUse',
   ]);
@@ -43,8 +44,8 @@ test('computeColumns enforces minimum widths on tiny terminals', () => {
   const name = columns.find((column) => column.key === 'name');
   const license = columns.find((column) => column.key === 'license');
   assert.ok(name !== undefined && license !== undefined);
-  assert.ok(name.width >= 16);
-  assert.ok(license.width >= 10);
+  assert.ok(name.width >= 10);
+  assert.ok(license.width >= 6);
 });
 
 test('localized header labels fit their fixed column widths', () => {

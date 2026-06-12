@@ -2,5 +2,16 @@
   "name": "test-project",
   "version": "1.0.0",
   "private": true,
-  "description": "Fixture project for verifying dep-lens against every supported license scenario"
+  "description": "Fixture project for verifying dep-lens against every supported license scenario",
+  "dependencies": {
+    "mit-lib": "1.0.0",
+    "apache-lib": "2.3.1",
+    "gpl-lib": "4.0.2",
+    "agpl-lib": "6.6.6",
+    "dual-or-lib": "1.5.0",
+    "@corp/scoped-lib": "2.0.0"
+  },
+  "devDependencies": {
+    "wtfpl-lib": "2.0.0"
+  }
 }

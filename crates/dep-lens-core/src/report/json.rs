@@ -34,6 +34,7 @@ mod tests {
                 license: "MIT".to_string(),
                 license_source: LicenseSource::Declared,
                 ecosystem: Ecosystem::Npm,
+                dependency_type: DependencyType::Direct,
                 category: LicenseCategory::Permissive,
                 risk_score: 0,
                 risk_level: RiskLevel::Low,

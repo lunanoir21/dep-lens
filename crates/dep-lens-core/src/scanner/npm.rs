@@ -26,17 +26,42 @@ pub fn scan(project_root: &Path) -> io::Result<Vec<Package>> {
     let node_modules = project_root.join("node_modules");
     let mut seen = HashSet::new();
     let mut packages = Vec::new();
+
+    let direct_deps = get_direct_dependencies(project_root);
+
     if node_modules.is_dir() {
-        scan_node_modules(&node_modules, &mut seen, &mut packages)?;
+        scan_node_modules(&node_modules, &mut seen, &mut packages, &direct_deps)?;
     }
     packages.sort_by(|a, b| a.name.cmp(&b.name).then_with(|| a.version.cmp(&b.version)));
     Ok(packages)
+}
+
+fn get_direct_dependencies(project_root: &Path) -> HashSet<String> {
+    let mut direct = HashSet::new();
+    if let Ok(raw) = fs::read_to_string(project_root.join("package.json")) {
+        if let Ok(value) = serde_json::from_str::<serde_json::Value>(&raw) {
+            for key in [
+                "dependencies",
+                "devDependencies",
+                "peerDependencies",
+                "optionalDependencies",
+            ] {
+                if let Some(deps) = value.get(key).and_then(|d| d.as_object()) {
+                    for name in deps.keys() {
+                        direct.insert(name.clone());
+                    }
+                }
+            }
+        }
+    }
+    direct
 }
 
 fn scan_node_modules(
     dir: &Path,
     seen: &mut HashSet<String>,
     out: &mut Vec<Package>,
+    direct_deps: &HashSet<String>,
 ) -> io::Result<()> {
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
@@ -54,11 +79,11 @@ fn scan_node_modules(
             for scoped in fs::read_dir(&path)? {
                 let scoped = scoped?;
                 if scoped.path().is_dir() {
-                    visit_package(&scoped.path(), seen, out)?;
+                    visit_package(&scoped.path(), seen, out, direct_deps)?;
                 }
             }
         } else {
-            visit_package(&path, seen, out)?;
+            visit_package(&path, seen, out, direct_deps)?;
         }
     }
     Ok(())
@@ -68,6 +93,7 @@ fn visit_package(
     pkg_dir: &Path,
     seen: &mut HashSet<String>,
     out: &mut Vec<Package>,
+    direct_deps: &HashSet<String>,
 ) -> io::Result<()> {
     let manifest = pkg_dir.join("package.json");
     if manifest.is_file() {
@@ -75,6 +101,9 @@ fn visit_package(
         // node_modules trees routinely contain broken leftovers.
         if let Ok(raw) = fs::read_to_string(&manifest) {
             if let Some(mut pkg) = parse_manifest(&raw) {
+                if direct_deps.contains(&pkg.name) {
+                    pkg.dependency_type = crate::model::DependencyType::Direct;
+                }
                 if needs_license_file_fallback(pkg.license.as_deref()) {
                     if let Some(detected) = detect_license_file(pkg_dir) {
                         pkg.license = Some(detected);
@@ -89,7 +118,7 @@ fn visit_package(
     }
     let nested = pkg_dir.join("node_modules");
     if nested.is_dir() {
-        scan_node_modules(&nested, seen, out)?;
+        scan_node_modules(&nested, seen, out, direct_deps)?;
     }
     Ok(())
 }
@@ -146,6 +175,7 @@ pub fn parse_manifest(raw: &str) -> Option<Package> {
         license,
         license_source,
         ecosystem: Ecosystem::Npm,
+        dependency_type: crate::model::DependencyType::Transitive,
     })
 }
 

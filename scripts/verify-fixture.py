@@ -105,30 +105,30 @@ def ensure_fixture():
             handle.write(content)
     os.makedirs(os.path.join(node_modules, ".bin"), exist_ok=True)
 
-# name -> (license, category, riskScore, commercialUse, licenseSource, ecosystem)
+# name -> (license, category, riskScore, commercialUse, licenseSource, ecosystem, dependencyType)
 EXPECTED = {
-    "mit-lib": ("MIT", "Permissive", 0, "yes", "declared", "npm"),
-    "apache-lib": ("Apache-2.0", "Permissive", 0, "yes", "declared", "npm"),
-    "isc-object-lib": ("ISC", "Permissive", 0, "yes", "declared", "npm"),
-    "legacy-bsd-lib": ("BSD-3-Clause", "Permissive", 0, "yes", "declared", "npm"),
-    "zlib-lib": ("Zlib", "Permissive", 0, "yes", "declared", "npm"),
-    "wtfpl-lib": ("WTFPL", "Permissive", 0, "yes", "declared", "npm"),
-    "@corp/scoped-lib": ("BSD-2-Clause", "Permissive", 0, "yes", "declared", "npm"),
-    "nested-unlicense": ("Unlicense", "Permissive", 0, "yes", "declared", "npm"),
-    "dual-or-lib": ("GPL-2.0 OR MIT", "Permissive", 0, "yes", "declared", "npm"),
-    "file-only-mit": ("MIT", "Permissive", 0, "yes", "licenseFile", "npm"),
-    "lgpl-lib": ("LGPL-2.1", "WeakCopyleft", 50, "caution", "declared", "npm"),
-    "mpl-lib": ("MPL-2.0", "WeakCopyleft", 40, "caution", "declared", "npm"),
-    "epl-lib": ("EPL-2.0", "WeakCopyleft", 45, "caution", "declared", "npm"),
-    "gpl-lib": ("GPL-3.0-only", "StrongCopyleft", 90, "restricted", "declared", "npm"),
-    "agpl-lib": ("AGPL-3.0", "StrongCopyleft", 100, "restricted", "declared", "npm"),
-    "strict-and-lib": ("MIT AND GPL-2.0", "StrongCopyleft", 90, "restricted", "declared", "npm"),
-    "see-license-gpl": ("GPL-3.0", "StrongCopyleft", 90, "restricted", "licenseFile", "npm"),
-    "no-license-lib": ("UNKNOWN", "Unknown", 60, "review", "none", "npm"),
-    "proprietary-lib": ("Proprietary", "Unknown", 60, "review", "declared", "npm"),
-    "mit-crate": ("MIT", "Permissive", 0, "yes", "declared", "cargo"),
-    "gpl-crate": ("GPL-3.0-only", "StrongCopyleft", 90, "restricted", "declared", "cargo"),
-    "filelicense-crate": ("LGPL-2.1", "WeakCopyleft", 50, "caution", "licenseFile", "cargo"),
+    "mit-lib": ("MIT", "Permissive", 0, "yes", "declared", "npm", "direct"),
+    "apache-lib": ("Apache-2.0", "Permissive", 0, "yes", "declared", "npm", "direct"),
+    "isc-object-lib": ("ISC", "Permissive", 0, "yes", "declared", "npm", "transitive"),
+    "legacy-bsd-lib": ("BSD-3-Clause", "Permissive", 0, "yes", "declared", "npm", "transitive"),
+    "zlib-lib": ("Zlib", "Permissive", 0, "yes", "declared", "npm", "transitive"),
+    "wtfpl-lib": ("WTFPL", "Permissive", 0, "yes", "declared", "npm", "direct"),
+    "@corp/scoped-lib": ("BSD-2-Clause", "Permissive", 0, "yes", "declared", "npm", "direct"),
+    "nested-unlicense": ("Unlicense", "Permissive", 0, "yes", "declared", "npm", "transitive"),
+    "dual-or-lib": ("GPL-2.0 OR MIT", "Permissive", 0, "yes", "declared", "npm", "direct"),
+    "file-only-mit": ("MIT", "Permissive", 0, "yes", "licenseFile", "npm", "transitive"),
+    "lgpl-lib": ("LGPL-2.1", "WeakCopyleft", 50, "caution", "declared", "npm", "transitive"),
+    "mpl-lib": ("MPL-2.0", "WeakCopyleft", 40, "caution", "declared", "npm", "transitive"),
+    "epl-lib": ("EPL-2.0", "WeakCopyleft", 45, "caution", "declared", "npm", "transitive"),
+    "gpl-lib": ("GPL-3.0-only", "StrongCopyleft", 90, "restricted", "declared", "npm", "direct"),
+    "agpl-lib": ("AGPL-3.0", "StrongCopyleft", 100, "restricted", "declared", "npm", "direct"),
+    "strict-and-lib": ("MIT AND GPL-2.0", "StrongCopyleft", 90, "restricted", "declared", "npm", "transitive"),
+    "see-license-gpl": ("GPL-3.0", "StrongCopyleft", 90, "restricted", "licenseFile", "npm", "transitive"),
+    "no-license-lib": ("UNKNOWN", "Unknown", 60, "review", "none", "npm", "transitive"),
+    "proprietary-lib": ("Proprietary", "Unknown", 60, "review", "declared", "npm", "transitive"),
+    "mit-crate": ("MIT", "Permissive", 0, "yes", "declared", "cargo", "direct"),
+    "gpl-crate": ("GPL-3.0-only", "StrongCopyleft", 90, "restricted", "declared", "cargo", "direct"),
+    "filelicense-crate": ("LGPL-2.1", "WeakCopyleft", 50, "caution", "licenseFile", "cargo", "direct"),
 }
 
 EXPECTED_SUMMARY = {
@@ -172,7 +172,9 @@ def main():
     check(len(packages) == len(EXPECTED), f"{len(EXPECTED)} unique packages found")
     check("test-project" not in packages, "workspace member itself excluded")
 
-    for name, (license_, category, score, commercial, source, eco) in sorted(EXPECTED.items()):
+    for name, (license_, category, score, commercial, source, eco, dep_type) in sorted(
+        EXPECTED.items()
+    ):
         pkg = packages.get(name)
         if pkg is None:
             check(False, f"{name}: present in report")
@@ -184,9 +186,10 @@ def main():
             pkg["commercialUse"],
             pkg["licenseSource"],
             pkg["ecosystem"],
+            pkg["dependencyType"],
         )
         check(
-            actual == (license_, category, score, commercial, source, eco),
+            actual == (license_, category, score, commercial, source, eco, dep_type),
             f"{name}: {actual}",
         )
 

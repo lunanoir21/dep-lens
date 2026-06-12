@@ -21,34 +21,50 @@ function Row({ label, children }: { label: string; children: React.ReactNode }):
 
 export function DetailPane({ pkg }: DetailPaneProps): React.JSX.Element {
   const messages = useMessages();
+
   return (
-    <Box flexDirection="column" borderStyle="classic" paddingX={1}>
-      <Text bold color="cyan">
-        {pkg.name}@{pkg.version} {messages.detail.hint}
-      </Text>
-      <Row label={messages.detail.ecosystem}>{pkg.ecosystem}</Row>
-      <Row label={messages.detail.license}>
-        {pkg.license} <Text color="gray">({messages.sources[pkg.licenseSource]})</Text>
-      </Row>
-      <Row label={messages.detail.category}>
-        <Text color={categoryColor(pkg.category)} bold>
-          {messages.categories[pkg.category]}
+    <Box flexDirection="column" borderStyle="double" borderColor="cyan" paddingX={1}>
+      <Box justifyContent="space-between">
+        <Text bold color="white" backgroundColor="cyan">
+          {" "}{pkg.name}@{pkg.version}{" "}
         </Text>
-      </Row>
-      <Row label={messages.detail.risk}>
-        <Text color={riskColor(pkg.riskLevel)}>
-          {format(messages.detail.riskValue, {
-            score: pkg.riskScore,
-            level: messages.riskLevels[pkg.riskLevel],
-          })}
-        </Text>
-      </Row>
-      <Row label={messages.detail.commercial}>
-        <Text color={commercialColor(pkg.commercialUse)}>
-          {messages.commercial[pkg.commercialUse]}
-        </Text>
-      </Row>
-      <Row label={messages.detail.advice}>{messages.advice[pkg.category]}</Row>
+        <Text color="gray">{messages.detail.hint}</Text>
+      </Box>
+      <Box marginTop={1} flexDirection="column">
+        <Row label={messages.detail.ecosystem}>
+          <Text color="blue">{pkg.ecosystem}</Text>
+          <Text color="gray"> ({messages.types[pkg.dependencyType]})</Text>
+        </Row>
+        <Row label={messages.detail.license}>
+          <Text bold>{pkg.license}</Text>
+          <Text color="gray"> - {messages.sources[pkg.licenseSource]}</Text>
+        </Row>
+        <Row label={messages.detail.category}>
+          <Text color={categoryColor(pkg.category)} bold>
+            {messages.categories[pkg.category]}
+          </Text>
+        </Row>
+        <Row label={messages.detail.risk}>
+          <Text color={riskColor(pkg.riskLevel)}>
+            {format(messages.detail.riskValue, {
+              score: pkg.riskScore,
+              level: messages.riskLevels[pkg.riskLevel],
+            })}
+          </Text>
+        </Row>
+        <Row label={messages.detail.commercial}>
+          <Text color={commercialColor(pkg.commercialUse)} bold>
+            {messages.commercial[pkg.commercialUse].toUpperCase()}
+          </Text>
+        </Row>
+      </Box>
+      <Box marginTop={1} padding={1} borderStyle="single" borderColor="gray">
+        <Box flexDirection="column">
+          <Text bold italic color="gray">{messages.detail.advice}:</Text>
+          <Text>{messages.advice[pkg.category]}</Text>
+        </Box>
+      </Box>
     </Box>
   );
 }
+

@@ -6,6 +6,19 @@ use serde::{Deserialize, Serialize};
 pub enum Ecosystem {
     Npm,
     Cargo,
+    Go,
+    Python,
+    Ruby,
+    Php,
+}
+
+/// Whether a dependency is direct (declared in the project manifest) or
+/// transitive (pulled in by another dependency).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DependencyType {
+    Direct,
+    Transitive,
 }
 
 /// License category buckets used for commercial risk classification.
@@ -56,6 +69,7 @@ pub struct Package {
     pub license: Option<String>,
     pub license_source: LicenseSource,
     pub ecosystem: Ecosystem,
+    pub dependency_type: DependencyType,
 }
 
 /// A dependency after classification and risk assessment.
@@ -67,6 +81,7 @@ pub struct ClassifiedPackage {
     pub license: String,
     pub license_source: LicenseSource,
     pub ecosystem: Ecosystem,
+    pub dependency_type: DependencyType,
     pub category: LicenseCategory,
     pub risk_score: u8,
     pub risk_level: RiskLevel,

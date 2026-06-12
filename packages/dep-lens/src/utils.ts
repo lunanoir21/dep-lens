@@ -12,6 +12,7 @@ export type SortColumn =
   | 'version'
   | 'license'
   | 'category'
+  | 'dependencyType'
   | 'riskScore'
   | 'commercialUse';
 
@@ -20,6 +21,7 @@ export const SORT_COLUMNS: readonly SortColumn[] = [
   'version',
   'license',
   'category',
+  'dependencyType',
   'riskScore',
   'commercialUse',
 ];
@@ -81,6 +83,9 @@ export function sortPackages(
       case 'commercialUse':
         cmp = COMMERCIAL_ORDER[a.commercialUse] - COMMERCIAL_ORDER[b.commercialUse];
         break;
+      case 'dependencyType':
+        cmp = a.dependencyType.localeCompare(b.dependencyType);
+        break;
       default:
         cmp = a[column].localeCompare(b[column]);
         break;
@@ -103,6 +108,20 @@ export function percent(part: number, total: number): string {
     return '0.0';
   }
   return ((part / total) * 100).toFixed(1);
+}
+
+/**
+ * Calculate a weighted health score (0-100) for the project.
+ * Permissive: 1.0, Weak: 0.5, Unknown: 0.2, Strong: 0.0
+ */
+export function calculateHealthScore(summary: Summary): number {
+  if (summary.total === 0) return 100;
+  const weighted =
+    summary.permissive * 1.0 +
+    summary.weakCopyleft * 0.5 +
+    summary.unknown * 0.2 +
+    summary.strongCopyleft * 0.0;
+  return Math.round((weighted / summary.total) * 100);
 }
 
 /** Truncate to width, marking cut-off text with a two-dot ASCII ellipsis. */

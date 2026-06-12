@@ -8,6 +8,8 @@ test('defaults', () => {
   assert.deepEqual(options, {
     json: false,
     html: null,
+    csv: null,
+    markdown: null,
     failOn: null,
     path: '.',
     ignore: [],

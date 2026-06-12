@@ -4,7 +4,9 @@
  * crates/dep-lens-core/src/model.rs.
  */
 
-export type Ecosystem = 'npm' | 'cargo';
+export type Ecosystem = 'npm' | 'cargo' | 'go' | 'python' | 'ruby' | 'php';
+
+export type DependencyType = 'direct' | 'transitive';
 
 export type LicenseCategory =
   | 'Permissive'
@@ -24,6 +26,7 @@ export interface ClassifiedPackage {
   license: string;
   licenseSource: LicenseSource;
   ecosystem: Ecosystem;
+  dependencyType: DependencyType;
   category: LicenseCategory;
   riskScore: number;
   riskLevel: RiskLevel;

@@ -1,5 +1,6 @@
 import type {
   CommercialUse,
+  DependencyType,
   LicenseCategory,
   LicenseSource,
   RiskLevel,
@@ -21,12 +22,14 @@ export interface Messages {
   riskLevels: Record<RiskLevel, string>;
   commercial: Record<CommercialUse, string>;
   sources: Record<LicenseSource, string>;
+  types: Record<DependencyType, string>;
   advice: Record<LicenseCategory, string>;
   table: {
     package: string;
     version: string;
     license: string;
     category: string;
+    type: string;
     risk: string;
     commercial: string;
     empty: string;
@@ -116,6 +119,10 @@ export const EN: Messages = {
     licenseFile: 'detected from LICENSE file',
     none: 'not found',
   },
+  types: {
+    direct: 'direct',
+    transitive: 'transitive',
+  },
   advice: {
     Permissive: 'Safe for commercial use. Keep the copyright notice.',
     WeakCopyleft:
@@ -129,6 +136,7 @@ export const EN: Messages = {
     version: 'VERSION',
     license: 'LICENSE',
     category: 'CATEGORY',
+    type: 'TYPE',
     risk: 'RISK',
     commercial: 'COMMERCIAL',
     empty: 'No packages match the current filter.',
@@ -221,6 +229,10 @@ export const TR: Messages = {
     licenseFile: 'LICENSE dosyasından tespit edildi',
     none: 'bulunamadı',
   },
+  types: {
+    direct: 'doğrudan',
+    transitive: 'dolaylı',
+  },
   advice: {
     Permissive: 'Ticari kullanım için güvenli. Telif bildirimini koruyun.',
     WeakCopyleft:
@@ -234,6 +246,7 @@ export const TR: Messages = {
     version: 'SÜRÜM',
     license: 'LİSANS',
     category: 'KATEGORİ',
+    type: 'TÜR',
     risk: 'RİSK',
     commercial: 'TİCARİ',
     empty: 'Filtreyle eşleşen paket yok.',

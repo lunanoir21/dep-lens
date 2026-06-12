@@ -12,6 +12,7 @@ const execFileAsync = promisify(execFile);
 export interface ScanOptions {
   path: string;
   ignore: readonly string[];
+  locale?: string;
 }
 
 const PLATFORM_PACKAGES: Record<string, string> = {
@@ -66,6 +67,9 @@ function scanArgs(options: ScanOptions): string[] {
   const args = ['--path', options.path];
   for (const name of options.ignore) {
     args.push('--ignore', name);
+  }
+  if (options.locale) {
+    args.push('--lang', options.locale);
   }
   return args;
 }
@@ -122,4 +126,14 @@ export async function runScan(options: ScanOptions): Promise<Report> {
 /** Run a scan and return the standalone HTML report. */
 export async function renderHtml(options: ScanOptions): Promise<string> {
   return runCore([...scanArgs(options), '--format', 'html']);
+}
+
+/** Run a scan and return the CSV report. */
+export async function renderCsv(options: ScanOptions): Promise<string> {
+  return runCore([...scanArgs(options), '--format', 'csv']);
+}
+
+/** Run a scan and return the Markdown report. */
+export async function renderMarkdown(options: ScanOptions): Promise<string> {
+  return runCore([...scanArgs(options), '--format', 'markdown']);
 }

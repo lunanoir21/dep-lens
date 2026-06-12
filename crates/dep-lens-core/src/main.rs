@@ -4,14 +4,15 @@ use std::process::ExitCode;
 use dep_lens_core::{build_report, report, scanner, util};
 
 const USAGE: &str = "\
-dep-lens-core: scan npm and Cargo dependencies for license risk
+dep-lens-core: scan dependencies for license risk
 
 USAGE:
     dep-lens-core [OPTIONS]
 
 OPTIONS:
     --path <DIR>       Project directory to scan (default: current directory)
-    --format <FMT>     Output format: json or html (default: json)
+    --format <FMT>     Output format: json, html, csv, markdown (default: json)
+    --lang <LANG>      Language for reports: en, tr (default: en)
     --ignore <NAMES>   Comma-separated package names to exclude (repeatable)
     --project <NAME>   Override the detected project name
     --help             Show this help
@@ -21,6 +22,7 @@ OPTIONS:
 struct Args {
     path: PathBuf,
     format: Format,
+    lang: String,
     ignore: Vec<String>,
     project: Option<String>,
 }
@@ -29,12 +31,15 @@ struct Args {
 enum Format {
     Json,
     Html,
+    Csv,
+    Markdown,
 }
 
 fn parse_args(argv: &[String]) -> Result<Option<Args>, String> {
     let mut args = Args {
         path: PathBuf::from("."),
         format: Format::Json,
+        lang: "en".to_string(),
         ignore: Vec::new(),
         project: None,
     };
@@ -58,7 +63,16 @@ fn parse_args(argv: &[String]) -> Result<Option<Args>, String> {
                 args.format = match value.as_str() {
                     "json" => Format::Json,
                     "html" => Format::Html,
+                    "csv" => Format::Csv,
+                    "markdown" | "md" => Format::Markdown,
                     other => return Err(format!("unsupported format: {other}")),
+                };
+            }
+            "--lang" => {
+                let value = iter.next().ok_or("--lang requires a value")?;
+                args.lang = match value.as_str() {
+                    "en" | "tr" => value.to_string(),
+                    other => return Err(format!("unsupported language: {other}")),
                 };
             }
             "--ignore" => {
@@ -139,14 +153,33 @@ fn run() -> Result<(), String> {
 
     let npm_packages =
         scanner::npm::scan(&args.path).map_err(|e| format!("npm scan failed: {e}"))?;
-    // A missing/broken Cargo setup must not block the npm half of the report.
     let cargo_packages = scanner::cargo::scan(&args.path).unwrap_or_else(|e| {
         eprintln!("warning: cargo scan skipped: {e}");
+        Vec::new()
+    });
+    let go_packages = scanner::go::scan(&args.path).unwrap_or_else(|e| {
+        eprintln!("warning: go scan skipped: {e}");
+        Vec::new()
+    });
+    let python_packages = scanner::python::scan(&args.path).unwrap_or_else(|e| {
+        eprintln!("warning: python scan skipped: {e}");
+        Vec::new()
+    });
+    let ruby_packages = scanner::ruby::scan(&args.path).unwrap_or_else(|e| {
+        eprintln!("warning: ruby scan skipped: {e}");
+        Vec::new()
+    });
+    let php_packages = scanner::php::scan(&args.path).unwrap_or_else(|e| {
+        eprintln!("warning: php scan skipped: {e}");
         Vec::new()
     });
 
     let mut packages = npm_packages;
     packages.extend(cargo_packages);
+    packages.extend(go_packages);
+    packages.extend(python_packages);
+    packages.extend(ruby_packages);
+    packages.extend(php_packages);
 
     let project = args
         .project
@@ -167,7 +200,9 @@ fn run() -> Result<(), String> {
 
     let output = match args.format {
         Format::Json => report::json::render(&report).map_err(|e| e.to_string())?,
-        Format::Html => report::html::render(&report),
+        Format::Html => report::html::render(&report, &args.lang),
+        Format::Csv => report::csv::render(&report),
+        Format::Markdown => report::markdown::render(&report),
     };
     println!("{output}");
     Ok(())

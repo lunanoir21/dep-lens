@@ -6,7 +6,7 @@ import React from 'react';
 import { render } from 'ink';
 
 import { parseArgs, USAGE, type CliOptions } from './args.js';
-import { renderHtml, runScan } from './bridge.js';
+import { renderCsv, renderHtml, renderMarkdown, runScan } from './bridge.js';
 import type { Report } from './types.js';
 import { violations } from './utils.js';
 import { Root } from './ui/Root.js';
@@ -53,7 +53,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  const scanOptions = { path: options.path, ignore: options.ignore };
+  const scanOptions = { path: options.path, ignore: options.ignore, locale: options.locale };
 
   if (options.json) {
     const report = await runScan(scanOptions);
@@ -66,6 +66,22 @@ async function main(): Promise<void> {
     const html = await renderHtml(scanOptions);
     await writeFile(options.html, html);
     process.stderr.write(`dep-lens: HTML report written to ${options.html}\n`);
+    applyFailOn(report, options);
+    return;
+  }
+  if (options.csv !== null) {
+    const report = await runScan(scanOptions);
+    const csv = await renderCsv(scanOptions);
+    await writeFile(options.csv, csv);
+    process.stderr.write(`dep-lens: CSV report written to ${options.csv}\n`);
+    applyFailOn(report, options);
+    return;
+  }
+  if (options.markdown !== null) {
+    const report = await runScan(scanOptions);
+    const md = await renderMarkdown(scanOptions);
+    await writeFile(options.markdown, md);
+    process.stderr.write(`dep-lens: Markdown report written to ${options.markdown}\n`);
     applyFailOn(report, options);
     return;
   }

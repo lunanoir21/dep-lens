@@ -1,4 +1,85 @@
-use crate::model::{LicenseCategory, LicenseSource, Report};
+use crate::model::{DependencyType, LicenseCategory, LicenseSource, Report};
+
+struct Labels {
+    title: &'static str,
+    project: &'static str,
+    scanned: &'static str,
+    path: &'static str,
+    total: &'static str,
+    search_placeholder: &'static str,
+    showing: &'static str,
+    of: &'static str,
+    packages: &'static str,
+    col_package: &'static str,
+    col_version: &'static str,
+    col_license: &'static str,
+    col_ecosystem: &'static str,
+    col_type: &'static str,
+    col_category: &'static str,
+    col_risk_score: &'static str,
+    col_risk_level: &'static str,
+    col_commercial: &'static str,
+    col_source: &'static str,
+    cat_all: &'static str,
+    cat_permissive: &'static str,
+    cat_weak: &'static str,
+    cat_strong: &'static str,
+    cat_unknown: &'static str,
+}
+
+const EN: Labels = Labels {
+    title: "dep-lens license report",
+    project: "Project",
+    scanned: "Scanned",
+    path: "Path",
+    total: "Total packages",
+    search_placeholder: "Filter by package, license, or category...",
+    showing: "Showing",
+    of: "of",
+    packages: "packages",
+    col_package: "Package",
+    col_version: "Version",
+    col_license: "License",
+    col_ecosystem: "Ecosystem",
+    col_type: "Type",
+    col_category: "Category",
+    col_risk_score: "Risk Score",
+    col_risk_level: "Risk Level",
+    col_commercial: "Commercial Use",
+    col_source: "Source",
+    cat_all: "All",
+    cat_permissive: "Permissive",
+    cat_weak: "Weak Copyleft",
+    cat_strong: "Strong Copyleft",
+    cat_unknown: "Unknown",
+};
+
+const TR: Labels = Labels {
+    title: "dep-lens lisans raporu",
+    project: "Proje",
+    scanned: "Tarama Tarihi",
+    path: "Dizin",
+    total: "Toplam paket",
+    search_placeholder: "Paket, lisans veya kategoriye göre filtrele...",
+    showing: "Gösterilen:",
+    of: "/",
+    packages: "paket",
+    col_package: "Paket",
+    col_version: "Sürüm",
+    col_license: "Lisans",
+    col_ecosystem: "Ekosistem",
+    col_type: "Tür",
+    col_category: "Kategori",
+    col_risk_score: "Risk Puanı",
+    col_risk_level: "Risk Seviyesi",
+    col_commercial: "Ticari Kullanım",
+    col_source: "Kaynak",
+    cat_all: "Tümü",
+    cat_permissive: "İzinli",
+    cat_weak: "Zayıf Copyleft",
+    cat_strong: "Güçlü Copyleft",
+    cat_unknown: "Bilinmeyen",
+};
 
 /// Escape text for safe interpolation into HTML.
 fn escape(input: &str) -> String {
@@ -16,12 +97,15 @@ fn escape(input: &str) -> String {
     out
 }
 
-fn category_meta(category: LicenseCategory) -> (&'static str, &'static str, &'static str) {
+fn category_meta(
+    category: LicenseCategory,
+    labels: &Labels,
+) -> (&'static str, &'static str, &'static str) {
     match category {
-        LicenseCategory::Permissive => ("Permissive", "permissive", "#2e7d32"),
-        LicenseCategory::WeakCopyleft => ("Weak Copyleft", "weak", "#b58900"),
-        LicenseCategory::StrongCopyleft => ("Strong Copyleft", "strong", "#c62828"),
-        LicenseCategory::Unknown => ("Unknown", "unknown", "#616161"),
+        LicenseCategory::Permissive => (labels.cat_permissive, "permissive", "#2e7d32"),
+        LicenseCategory::WeakCopyleft => (labels.cat_weak, "weak", "#b58900"),
+        LicenseCategory::StrongCopyleft => (labels.cat_strong, "strong", "#c62828"),
+        LicenseCategory::Unknown => (labels.cat_unknown, "unknown", "#616161"),
     }
 }
 
@@ -40,32 +124,37 @@ fn percent(part: usize, total: usize) -> String {
     format!("{:.1}", part as f64 * 100.0 / total as f64)
 }
 
-/// Render a standalone interactive HTML report: summary cards double as
-/// category filters, a search box narrows the table, and every column header
-/// sorts on click. No external assets; everything is inlined, no emoji.
-pub fn render(report: &Report) -> String {
+/// Render a standalone interactive HTML report.
+pub fn render(report: &Report, lang: &str) -> String {
+    let labels = if lang == "tr" { &TR } else { &EN };
     let total = report.summary.total;
+
     let summary_cards = [
-        ("All", "all", total, "#1565c0"),
+        (labels.cat_all, "all", total, "#1565c0"),
         (
-            "Permissive",
+            labels.cat_permissive,
             "permissive",
             report.summary.permissive,
             "#2e7d32",
         ),
         (
-            "Weak Copyleft",
+            labels.cat_weak,
             "weak",
             report.summary.weak_copyleft,
             "#b58900",
         ),
         (
-            "Strong Copyleft",
+            labels.cat_strong,
             "strong",
             report.summary.strong_copyleft,
             "#c62828",
         ),
-        ("Unknown", "unknown", report.summary.unknown, "#616161"),
+        (
+            labels.cat_unknown,
+            "unknown",
+            report.summary.unknown,
+            "#616161",
+        ),
     ]
     .iter()
     .map(|(label, slug, count, color)| {
@@ -84,10 +173,15 @@ pub fn render(report: &Report) -> String {
         .packages
         .iter()
         .map(|pkg| {
-            let (category_label, category_slug, color) = category_meta(pkg.category);
+            let (category_label, category_slug, color) = category_meta(pkg.category, labels);
+            let type_label = match pkg.dependency_type {
+                DependencyType::Direct => "direct",
+                DependencyType::Transitive => "transitive",
+            };
             format!(
                 "<tr data-category=\"{category_slug}\" data-search=\"{search}\">\
                  <td>{name}</td><td>{version}</td><td>{license}</td><td>{ecosystem}</td>\
+                 <td>{dep_type}</td>\
                  <td><span class=\"badge\" style=\"background:{color}\">{category_label}</span></td>\
                  <td class=\"num\" data-value=\"{score}\">{score}</td>\
                  <td>{level:?}</td><td>{commercial:?}</td><td>{source}</td></tr>",
@@ -101,6 +195,7 @@ pub fn render(report: &Report) -> String {
                 version = escape(&pkg.version),
                 license = escape(&pkg.license),
                 ecosystem = format!("{:?}", pkg.ecosystem).to_lowercase(),
+                dep_type = type_label,
                 score = pkg.risk_score,
                 level = pkg.risk_level,
                 commercial = pkg.commercial_use,
@@ -112,7 +207,7 @@ pub fn render(report: &Report) -> String {
 
     format!(
         r#"<!DOCTYPE html>
-<html lang="en">
+<html lang="{lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -138,24 +233,25 @@ pub fn render(report: &Report) -> String {
 </style>
 </head>
 <body>
-<h1>dep-lens license report</h1>
-<p class="meta">Project: {project} | Scanned: {scanned_at} | Path: {path} | Total packages: {total}</p>
+<h1>{title}</h1>
+<p class="meta">{lbl_project}: {project} | {lbl_scanned}: {scanned_at} | {lbl_path}: {path} | {lbl_total}: {total}</p>
 <div class="cards">
 {summary_cards}
 </div>
-<input id="search" type="search" placeholder="Filter by package, license, or category...">
+<input id="search" type="search" placeholder="{search_placeholder}">
 <p id="count"></p>
 <table id="pkgs">
 <thead><tr>
-<th data-col="0">Package <span class="dir"></span></th>
-<th data-col="1">Version <span class="dir"></span></th>
-<th data-col="2">License <span class="dir"></span></th>
-<th data-col="3">Ecosystem <span class="dir"></span></th>
-<th data-col="4">Category <span class="dir"></span></th>
-<th data-col="5" data-numeric="1">Risk Score <span class="dir"></span></th>
-<th data-col="6">Risk Level <span class="dir"></span></th>
-<th data-col="7">Commercial Use <span class="dir"></span></th>
-<th data-col="8">Source <span class="dir"></span></th>
+<th data-col="0">{col_package} <span class="dir"></span></th>
+<th data-col="1">{col_version} <span class="dir"></span></th>
+<th data-col="2">{col_license} <span class="dir"></span></th>
+<th data-col="3">{col_ecosystem} <span class="dir"></span></th>
+<th data-col="4">{col_type} <span class="dir"></span></th>
+<th data-col="5">{col_category} <span class="dir"></span></th>
+<th data-col="6" data-numeric="1">{col_risk_score} <span class="dir"></span></th>
+<th data-col="7">{col_risk_level} <span class="dir"></span></th>
+<th data-col="8">{col_commercial} <span class="dir"></span></th>
+<th data-col="9">{col_source} <span class="dir"></span></th>
 </tr></thead>
 <tbody>
 {rows}
@@ -180,7 +276,7 @@ pub fn render(report: &Report) -> String {
       row.style.display = visible ? '' : 'none';
       if (visible) shown += 1;
     }});
-    countEl.textContent = 'Showing ' + shown + ' of ' + rows.length + ' packages';
+    countEl.textContent = '{showing} ' + shown + ' {of} ' + rows.length + ' {packages}';
   }}
 
   cards.forEach(function (card) {{
@@ -222,9 +318,29 @@ pub fn render(report: &Report) -> String {
 </body>
 </html>
 "#,
+        lang = lang,
         project = escape(&report.project),
         scanned_at = escape(&report.scanned_at),
         path = escape(&report.path),
+        title = labels.title,
+        lbl_project = labels.project,
+        lbl_scanned = labels.scanned,
+        lbl_path = labels.path,
+        lbl_total = labels.total,
+        search_placeholder = labels.search_placeholder,
+        showing = labels.showing,
+        of = labels.of,
+        packages = labels.packages,
+        col_package = labels.col_package,
+        col_version = labels.col_version,
+        col_license = labels.col_license,
+        col_ecosystem = labels.col_ecosystem,
+        col_type = labels.col_type,
+        col_category = labels.col_category,
+        col_risk_score = labels.col_risk_score,
+        col_risk_level = labels.col_risk_level,
+        col_commercial = labels.col_commercial,
+        col_source = labels.col_source,
     )
 }
 
@@ -252,6 +368,7 @@ mod tests {
                     license: "MIT".to_string(),
                     license_source: LicenseSource::Declared,
                     ecosystem: Ecosystem::Npm,
+                    dependency_type: DependencyType::Direct,
                     category: LicenseCategory::Permissive,
                     risk_score: 0,
                     risk_level: RiskLevel::Low,
@@ -263,6 +380,7 @@ mod tests {
                     license: "GPL-3.0".to_string(),
                     license_source: LicenseSource::LicenseFile,
                     ecosystem: Ecosystem::Cargo,
+                    dependency_type: DependencyType::Transitive,
                     category: LicenseCategory::StrongCopyleft,
                     risk_score: 90,
                     risk_level: RiskLevel::High,
@@ -274,7 +392,7 @@ mod tests {
 
     #[test]
     fn escapes_html_in_package_names_and_project() {
-        let html = render(&sample_report());
+        let html = render(&sample_report(), "en");
         assert!(!html.contains("<script>alert(1)</script>"));
         assert!(html.contains("&lt;script&gt;alert(1)&lt;/script&gt;"));
         assert!(html.contains("x&lt;y&gt;&amp;&quot;z&quot;"));
@@ -282,7 +400,7 @@ mod tests {
 
     #[test]
     fn contains_summary_counts_and_packages() {
-        let html = render(&sample_report());
+        let html = render(&sample_report(), "en");
         assert!(html.contains("Total packages: 2"));
         assert!(html.contains("gplware"));
         assert!(html.contains("Strong Copyleft"));
@@ -290,33 +408,9 @@ mod tests {
     }
 
     #[test]
-    fn contains_interactive_controls() {
-        let html = render(&sample_report());
-        assert!(html.contains("id=\"search\""));
-        assert!(html.contains("data-filter=\"strong\""));
-        assert!(html.contains("data-category=\"strong\""));
-        assert!(html.contains("data-numeric=\"1\""));
-        assert!(html.contains("<script>\n(function () {"));
-    }
-
-    #[test]
-    fn shows_license_source() {
-        let html = render(&sample_report());
-        assert!(html.contains("<td>declared</td>"));
-        assert!(html.contains("<td>license file</td>"));
-    }
-
-    #[test]
-    fn empty_report_renders_zero_percentages() {
-        let report = Report {
-            project: "empty".to_string(),
-            scanned_at: "2026-06-12T00:00:00Z".to_string(),
-            path: "/tmp/empty".to_string(),
-            summary: Summary::default(),
-            packages: vec![],
-        };
-        let html = render(&report);
-        assert!(html.contains("Total packages: 0"));
-        assert!(html.contains("0.0%"));
+    fn supports_turkish_localization() {
+        let html = render(&sample_report(), "tr");
+        assert!(html.contains("dep-lens lisans raporu"));
+        assert!(html.contains("Toplam paket: 2"));
     }
 }

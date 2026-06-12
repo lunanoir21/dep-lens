@@ -7,6 +7,7 @@ export function pkg(overrides: Partial<ClassifiedPackage> = {}): ClassifiedPacka
     license: 'MIT',
     licenseSource: 'declared',
     ecosystem: 'npm',
+    dependencyType: 'direct',
     category: 'Permissive',
     riskScore: 0,
     riskLevel: 'low',

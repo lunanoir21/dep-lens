@@ -45,6 +45,7 @@ pub fn build_report(
                 license: license_str,
                 license_source: pkg.license_source,
                 ecosystem: pkg.ecosystem,
+                dependency_type: pkg.dependency_type,
                 category,
                 risk_score: assessment.score,
                 risk_level: assessment.level,
@@ -78,6 +79,7 @@ mod tests {
                 model::LicenseSource::None
             },
             ecosystem: Ecosystem::Npm,
+            dependency_type: model::DependencyType::Direct,
         }
     }
 
