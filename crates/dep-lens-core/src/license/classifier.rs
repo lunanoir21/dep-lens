@@ -102,18 +102,119 @@ pub fn classify(license: Option<&str>) -> LicenseCategory {
     if operands.is_empty() {
         return LicenseCategory::Unknown;
     }
-    if has_or && !has_and {
+    let result = if has_or && !has_and {
         // Dual licensing: the consumer may pick the friendliest option.
-        return operands
+        operands
             .into_iter()
             .min_by_key(|c| restrictiveness(*c))
-            .unwrap_or(LicenseCategory::Unknown);
+            .unwrap_or(LicenseCategory::Unknown)
+    } else {
+        // AND (or mixed expressions, conservatively): every term applies.
+        operands
+            .into_iter()
+            .max_by_key(|c| restrictiveness(*c))
+            .unwrap_or(LicenseCategory::Unknown)
+    };
+    if result == LicenseCategory::Unknown {
+        // Human-readable names ("Apache License, Version 2.0", "MIT License")
+        // are common in Maven POMs, gemspecs, and Python METADATA files.
+        if let Some(spdx) = normalize_license_name(raw) {
+            return classify_single(spdx);
+        }
     }
-    // AND (or mixed expressions, conservatively): every term applies.
-    operands
-        .into_iter()
-        .max_by_key(|c| restrictiveness(*c))
-        .unwrap_or(LicenseCategory::Unknown)
+    result
+}
+
+/// Map a human-readable license name to its SPDX identifier. Covers the
+/// phrasings commonly found in Maven POMs, Ruby gemspecs, and Python
+/// METADATA classifiers. Deliberately conservative: generic words like
+/// "license" alone never match.
+pub fn normalize_license_name(name: &str) -> Option<&'static str> {
+    let lower = name.trim().to_lowercase();
+    if lower.is_empty() {
+        return None;
+    }
+    if lower.contains("apache") {
+        return Some(if lower.contains("1.1") {
+            "Apache-1.1"
+        } else {
+            "Apache-2.0"
+        });
+    }
+    if lower.contains("affero") {
+        return Some("AGPL-3.0");
+    }
+    if lower.contains("lesser general public") || lower.contains("lgpl") {
+        return Some(if lower.contains('3') {
+            "LGPL-3.0"
+        } else {
+            "LGPL-2.1"
+        });
+    }
+    if lower.contains("general public license") || lower.starts_with("gpl") {
+        return Some(if lower.contains('2') {
+            "GPL-2.0"
+        } else {
+            "GPL-3.0"
+        });
+    }
+    if lower.contains("mozilla public") {
+        return Some(if lower.contains("1.1") {
+            "MPL-1.1"
+        } else {
+            "MPL-2.0"
+        });
+    }
+    if lower.contains("eclipse public") {
+        return Some(if lower.contains("1.0") {
+            "EPL-1.0"
+        } else {
+            "EPL-2.0"
+        });
+    }
+    if lower.contains("server side public") {
+        return Some("SSPL-1.0");
+    }
+    if lower.contains("mit") {
+        return Some("MIT");
+    }
+    if lower.contains("bsd") {
+        return Some(
+            if lower.contains('2') || lower.contains("simplified") || lower.contains("freebsd") {
+                "BSD-2-Clause"
+            } else {
+                "BSD-3-Clause"
+            },
+        );
+    }
+    if lower.contains("isc") {
+        return Some("ISC");
+    }
+    if lower.contains("zlib") {
+        return Some("Zlib");
+    }
+    if lower.contains("boost") {
+        return Some("BSL-1.0");
+    }
+    if lower.contains("unlicense") {
+        return Some("Unlicense");
+    }
+    if lower.contains("cc0") || lower.contains("public domain") {
+        return Some("CC0-1.0");
+    }
+    if lower.contains("python software foundation") {
+        return Some("Python-2.0");
+    }
+    if lower.contains("artistic") {
+        return Some("Artistic-2.0");
+    }
+    if lower.contains("cddl") || lower.contains("common development and distribution") {
+        return Some("CDDL-1.0");
+    }
+    if lower.contains("wtfpl") || lower.contains("do what the f") {
+        return Some("WTFPL");
+    }
+    None
 }
 
 /// Identify a license from the text of a LICENSE/COPYING file. Used as a
@@ -358,6 +459,66 @@ mod tests {
                 "Permission to use, copy, modify, and/or distribute this software..."
             ),
             Some("ISC")
+        );
+    }
+
+    #[test]
+    fn normalizes_human_readable_license_names() {
+        assert_eq!(
+            normalize_license_name("The Apache Software License, Version 2.0"),
+            Some("Apache-2.0")
+        );
+        assert_eq!(normalize_license_name("MIT License"), Some("MIT"));
+        assert_eq!(normalize_license_name("The MIT License (MIT)"), Some("MIT"));
+        assert_eq!(
+            normalize_license_name("New BSD License"),
+            Some("BSD-3-Clause")
+        );
+        assert_eq!(
+            normalize_license_name("Simplified BSD License"),
+            Some("BSD-2-Clause")
+        );
+        assert_eq!(
+            normalize_license_name("GNU Lesser General Public License v2.1"),
+            Some("LGPL-2.1")
+        );
+        assert_eq!(
+            normalize_license_name("GNU General Public License, version 2"),
+            Some("GPL-2.0")
+        );
+        assert_eq!(
+            normalize_license_name("Eclipse Public License v2.0"),
+            Some("EPL-2.0")
+        );
+        assert_eq!(
+            normalize_license_name("Mozilla Public License 2.0"),
+            Some("MPL-2.0")
+        );
+        assert_eq!(
+            normalize_license_name("Python Software Foundation License"),
+            Some("Python-2.0")
+        );
+        assert_eq!(normalize_license_name(""), None);
+        assert_eq!(normalize_license_name("Proprietary"), None);
+        assert_eq!(normalize_license_name("Commercial"), None);
+    }
+
+    #[test]
+    fn classify_falls_back_to_name_normalization() {
+        assert_eq!(
+            classify(Some("Apache License, Version 2.0")),
+            LicenseCategory::Permissive
+        );
+        assert_eq!(classify(Some("MIT License")), LicenseCategory::Permissive);
+        assert_eq!(
+            classify(Some("GNU General Public License v3.0")),
+            LicenseCategory::StrongCopyleft
+        );
+        assert_eq!(classify(Some("BSD License")), LicenseCategory::Permissive);
+        // Placeholders must stay Unknown despite containing "license".
+        assert_eq!(
+            classify(Some("SEE LICENSE IN LICENSE.txt")),
+            LicenseCategory::Unknown
         );
     }
 

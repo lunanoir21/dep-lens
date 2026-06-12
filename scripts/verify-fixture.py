@@ -129,15 +129,26 @@ EXPECTED = {
     "mit-crate": ("MIT", "Permissive", 0, "yes", "declared", "cargo", "direct"),
     "gpl-crate": ("GPL-3.0-only", "StrongCopyleft", 90, "restricted", "declared", "cargo", "direct"),
     "filelicense-crate": ("LGPL-2.1", "WeakCopyleft", 50, "caution", "licenseFile", "cargo", "direct"),
+    "github.com/pkg/errors": ("BSD-2-Clause", "Permissive", 0, "yes", "licenseFile", "go", "direct"),
+    "golang.org/x/text": ("BSD-3-Clause", "Permissive", 0, "yes", "licenseFile", "go", "transitive"),
+    "requests": ("Apache-2.0", "Permissive", 0, "yes", "declared", "python", "direct"),
+    "flask": ("BSD License", "Permissive", 0, "yes", "declared", "python", "transitive"),
+    "rails": ("MIT", "Permissive", 0, "yes", "declared", "ruby", "direct"),
+    "rake": ("MIT", "Permissive", 0, "yes", "licenseFile", "ruby", "transitive"),
+    "monolog/monolog": ("MIT", "Permissive", 0, "yes", "declared", "php", "direct"),
+    "symfony/console": ("MIT", "Permissive", 0, "yes", "declared", "php", "transitive"),
+    "phpunit/phpunit": ("BSD-3-Clause", "Permissive", 0, "yes", "declared", "php", "direct"),
 }
 
 EXPECTED_SUMMARY = {
-    "total": 22,
-    "permissive": 11,
+    "total": 31,
+    "permissive": 20,
     "weakCopyleft": 4,
     "strongCopyleft": 5,
     "unknown": 2,
 }
+
+EXPECTED_ECOSYSTEMS = {"npm", "cargo", "go", "python", "ruby", "php"}
 
 failures = []
 
@@ -151,11 +162,16 @@ def check(condition, message):
 
 
 def run_cli(*args):
+    env = dict(os.environ)
+    # Point cache lookups at the fixture's fake caches so license detection
+    # is fully reproducible without real Go/Ruby/Python toolchains.
+    env["DEP_LENS_GOPATH"] = os.path.join(FIXTURE, ".cache", "gopath")
     return subprocess.run(
         ["node", CLI, *args],
         capture_output=True,
         text=True,
         cwd=ROOT,
+        env=env,
     )
 
 
@@ -171,6 +187,11 @@ def main():
     packages = {p["name"]: p for p in report["packages"]}
     check(len(packages) == len(EXPECTED), f"{len(EXPECTED)} unique packages found")
     check("test-project" not in packages, "workspace member itself excluded")
+    found_ecosystems = {p["ecosystem"] for p in report["packages"]}
+    check(
+        found_ecosystems == EXPECTED_ECOSYSTEMS,
+        f"all ecosystems represented: {sorted(found_ecosystems)}",
+    )
 
     for name, (license_, category, score, commercial, source, eco, dep_type) in sorted(
         EXPECTED.items()
@@ -224,7 +245,7 @@ def main():
     )
     check(result.returncode == 0, "--ignore whitelists all strong copyleft, exit 0")
     report = json.loads(result.stdout)
-    check(report["summary"]["total"] == 17, "summary recomputed after ignore")
+    check(report["summary"]["total"] == 26, "summary recomputed after ignore")
     check(report["summary"]["strongCopyleft"] == 0, "no strong copyleft left")
 
     print("== --html ==")

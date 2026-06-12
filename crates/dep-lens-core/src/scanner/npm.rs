@@ -3,20 +3,8 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
-use crate::license::classifier::identify_license_text;
 use crate::model::{Ecosystem, LicenseSource, Package};
-
-/// File names probed when a package declares no license in its manifest.
-const LICENSE_FILE_NAMES: &[&str] = &[
-    "LICENSE",
-    "LICENSE.md",
-    "LICENSE.txt",
-    "LICENCE",
-    "LICENCE.md",
-    "COPYING",
-    "LICENSE-MIT",
-    "UNLICENSE",
-];
+use crate::scanner::detect_license_in_dir;
 
 /// Scan `<project_root>/node_modules` recursively, reading every package's
 /// `package.json` for its license declaration. Returns an empty list when no
@@ -105,7 +93,7 @@ fn visit_package(
                     pkg.dependency_type = crate::model::DependencyType::Direct;
                 }
                 if needs_license_file_fallback(pkg.license.as_deref()) {
-                    if let Some(detected) = detect_license_file(pkg_dir) {
+                    if let Some(detected) = detect_license_in_dir(pkg_dir) {
                         pkg.license = Some(detected);
                         pkg.license_source = LicenseSource::LicenseFile;
                     }
@@ -131,23 +119,6 @@ fn needs_license_file_fallback(license: Option<&str>) -> bool {
         None => true,
         Some(value) => value.trim().to_uppercase().starts_with("SEE LICENSE"),
     }
-}
-
-/// Probe well-known license file names and identify the license from the
-/// file contents.
-fn detect_license_file(pkg_dir: &Path) -> Option<String> {
-    for name in LICENSE_FILE_NAMES {
-        let path = pkg_dir.join(name);
-        if !path.is_file() {
-            continue;
-        }
-        if let Ok(raw) = fs::read_to_string(&path) {
-            if let Some(id) = identify_license_text(&raw) {
-                return Some(id.to_string());
-            }
-        }
-    }
-    None
 }
 
 /// Parse one `package.json`. Returns `None` when the JSON is invalid or has
