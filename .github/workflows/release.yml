@@ -75,11 +75,11 @@ jobs:
       - name: Publish platform packages
         run: |
           for pkg in dep-lens-linux-x64 dep-lens-darwin-x64 dep-lens-darwin-arm64 dep-lens-win32-x64; do
-            npm publish "packages/$pkg" --access public
+            (cd "packages/$pkg" && npm publish --access public)
           done
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Publish main package
-        run: npm publish packages/dep-lens --access public
+        run: (cd packages/dep-lens && npm publish --access public)
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
