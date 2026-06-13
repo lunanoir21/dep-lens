@@ -75,7 +75,11 @@ function pathContains(dir: string): boolean {
   return pathEnv.split(sep).some((entry) => entry.replace(/[/\\]+$/, '') === dir.replace(/[/\\]+$/, ''));
 }
 
-async function main(): Promise<void> {
+/**
+ * Run the setup wizard. `force` skips the TTY/CI checks (used by
+ * `dep-lens --setup`, where the user explicitly asked for it).
+ */
+export async function main(force = false): Promise<void> {
   // Always print a one-line banner so even non-interactive installs show
   // something useful, but never prompt unless we have a real TTY.
   const cwd = process.env['INIT_CWD'] ?? process.cwd();
@@ -88,7 +92,7 @@ async function main(): Promise<void> {
     process.stdout.write(`${dim('detected in this project:')} ${good(labels)}\n`);
   }
 
-  if (!isInteractive()) {
+  if (!force && !isInteractive()) {
     process.stdout.write(`${dim('run')} dep-lens ${dim('to scan, or')} dep-lens --help\n\n`);
     return;
   }
@@ -158,6 +162,10 @@ async function appendToShellProfile(binDir: string): Promise<void> {
   }
 }
 
-main().catch(() => {
-  // Never fail the install over the setup wizard.
-});
+// Only auto-run when invoked directly as the postinstall script, not when
+// imported by `dep-lens --setup`.
+if (process.argv[1]?.endsWith('postinstall.js')) {
+  main().catch(() => {
+    // Never fail the install over the setup wizard.
+  });
+}

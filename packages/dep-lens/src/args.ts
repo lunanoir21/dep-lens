@@ -15,6 +15,7 @@ export interface CliOptions {
   help: boolean;
   version: boolean;
   test: boolean;
+  setup: boolean;
 }
 
 export const USAGE = `dep-lens: scan dependencies for license risk
@@ -35,6 +36,8 @@ OPTIONS:
     --tr               Turkish UI (Turkce arayuz)
     --test             Run a self-check: verify the scanner binary and
                        report which ecosystems it detects in --path
+    --setup            Re-run the interactive setup wizard (language,
+                       PATH check) even outside of npm install
     --help             Show this help
     --version          Show version
 
@@ -69,6 +72,7 @@ export function parseArgs(argv: readonly string[]): CliOptions {
     help: false,
     version: false,
     test: false,
+    setup: false,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -120,6 +124,9 @@ export function parseArgs(argv: readonly string[]): CliOptions {
         break;
       case '--test':
         options.test = true;
+        break;
+      case '--setup':
+        options.setup = true;
         break;
       case '--help':
       case '-h':

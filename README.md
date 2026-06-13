@@ -100,15 +100,26 @@ dep-lens --fail-on agpl    # AGPL-3.0 only
 
 # Self-check: verify the scanner binary and which ecosystems it detects here
 dep-lens --test
+
+# Re-run the interactive setup wizard (language, PATH check)
+dep-lens --setup
 ```
 
-### Setup wizard and `--test`
+### Setup wizard, `--setup`, and `--test`
 
-Right after `npm install`, dep-lens runs a short interactive setup wizard
-(skipped automatically in CI or non-interactive installs): it lists the
-ecosystems it detects in your project, lets you pick a default UI language
-(saved to `~/.config/dep-lens/config.json`), and offers to add the npm global
-bin directory to your shell's `PATH` if it's missing.
+Right after `npm install`, dep-lens runs a short setup wizard. npm doesn't
+attach a terminal to install scripts, so this first run only detects your
+project's ecosystems and prints a one-line tip - it can't ask questions yet.
+Run `dep-lens --setup` afterwards (in a real terminal) to get the full
+interactive wizard: pick a default UI language (saved to
+`~/.config/dep-lens/config.json`) and check/add the npm global bin directory
+to your shell's `PATH`.
+
+> **npm 11+:** the `postinstall` script may be blocked by npm's install-script
+> policy with a warning like `1 package has install scripts not yet covered by
+> allowScripts`. Run `npm approve-scripts @lunanoir/dep-lens` (or reinstall
+> with `--allow-scripts="@lunanoir/dep-lens"`) to allow it - or just skip that
+> and run `dep-lens --setup` yourself.
 
 `dep-lens --test` re-runs those checks any time: it confirms the native
 binary runs, performs a scan, and reports per-ecosystem whether manifests it

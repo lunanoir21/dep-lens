@@ -18,12 +18,18 @@ test('defaults', () => {
     help: false,
     version: false,
     test: false,
+    setup: false,
   });
 });
 
 test('--test sets the self-check flag', () => {
   assert.equal(parseArgs(['--test']).test, true);
   assert.equal(parseArgs([]).test, false);
+});
+
+test('--setup sets the setup flag', () => {
+  assert.equal(parseArgs(['--setup']).setup, true);
+  assert.equal(parseArgs([]).setup, false);
 });
 
 test('--tr switches the TUI locale to Turkish', () => {

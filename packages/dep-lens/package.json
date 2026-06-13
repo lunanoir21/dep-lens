@@ -1,6 +1,6 @@
 {
   "name": "@lunanoir/dep-lens",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Dependency license scanner across npm, Cargo, Go, Python, Ruby, PHP, Java, Dart, and C/C++ with commercial risk reporting",
   "type": "module",
   "license": "MIT",

@@ -8,6 +8,7 @@ import { render } from 'ink';
 import { parseArgs, USAGE, type CliOptions } from './args.js';
 import { renderCsv, renderHtml, renderMarkdown, runScan } from './bridge.js';
 import { readConfig } from './config.js';
+import { main as runSetupWizard } from './postinstall.js';
 import { runSelfTest } from './selftest.js';
 import type { Report } from './types.js';
 import { violations } from './utils.js';
@@ -60,6 +61,11 @@ async function main(): Promise<void> {
     if (config.locale !== undefined) {
       options.locale = config.locale;
     }
+  }
+
+  if (options.setup) {
+    await runSetupWizard(true);
+    return;
   }
 
   const scanOptions = { path: options.path, ignore: options.ignore, locale: options.locale };
