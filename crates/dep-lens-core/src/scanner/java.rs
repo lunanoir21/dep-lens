@@ -154,7 +154,9 @@ pub fn parse_gradle_build_file(raw: &str) -> Vec<Package> {
 
             let parts: Vec<&str> = candidate.split(':').collect();
             if parts.len() == 3
-                && parts.iter().all(|p| !p.is_empty() && !p.contains(['$', '{', '}']))
+                && parts
+                    .iter()
+                    .all(|p| !p.is_empty() && !p.contains(['$', '{', '}']))
             {
                 packages.push(Package {
                     name: format!("{}:{}", parts[0], parts[1]),
@@ -270,7 +272,10 @@ dependencies {
         let names: Vec<&str> = packages.iter().map(|p| p.name.as_str()).collect();
         assert_eq!(
             names,
-            vec!["com.squareup.okhttp3:okhttp", "org.junit.jupiter:junit-jupiter"]
+            vec![
+                "com.squareup.okhttp3:okhttp",
+                "org.junit.jupiter:junit-jupiter"
+            ]
         );
         assert_eq!(packages[0].version, "4.12.0");
         assert_eq!(packages[0].dependency_type, DependencyType::Direct);

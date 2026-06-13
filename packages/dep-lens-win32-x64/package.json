@@ -1,6 +1,6 @@
 {
   "name": "@lunanoir/dep-lens-win32-x64",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "dep-lens native scanner binary for Windows x64",
   "license": "MIT",
   "repository": {
