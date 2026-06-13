@@ -4,7 +4,16 @@
  * crates/dep-lens-core/src/model.rs.
  */
 
-export type Ecosystem = 'npm' | 'cargo' | 'go' | 'python' | 'ruby' | 'php';
+export type Ecosystem =
+  | 'npm'
+  | 'cargo'
+  | 'go'
+  | 'python'
+  | 'ruby'
+  | 'php'
+  | 'java'
+  | 'dart'
+  | 'cpp';
 
 export type DependencyType = 'direct' | 'transitive';
 

@@ -1,0 +1,6 @@
+{
+    "name": "acme/php-test-project",
+    "require": {
+        "monolog/monolog": "^3.5"
+    }
+}

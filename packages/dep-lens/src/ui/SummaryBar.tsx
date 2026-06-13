@@ -5,6 +5,7 @@ import type { Summary } from '../types.js';
 import { buildRatioSegments, percent } from '../utils.js';
 import { useAnimatedNumber } from './hooks.js';
 import { useMessages } from './i18n-context.js';
+import { PALETTE } from './theme.js';
 
 export interface SummaryBarProps {
   summary: Summary;
@@ -44,14 +45,14 @@ export function SummaryBar({ summary }: SummaryBarProps): React.JSX.Element {
   const segments = buildRatioSegments(summary, barWidth, progress);
 
   const entries: Array<{ label: string; count: number; color: string }> = [
-    { label: messages.summaryShort.Permissive, count: summary.permissive, color: 'green' },
-    { label: messages.summaryShort.WeakCopyleft, count: summary.weakCopyleft, color: 'yellow' },
+    { label: messages.summaryShort.Permissive, count: summary.permissive, color: PALETTE.good },
+    { label: messages.summaryShort.WeakCopyleft, count: summary.weakCopyleft, color: PALETTE.ok },
     {
       label: messages.summaryShort.StrongCopyleft,
       count: summary.strongCopyleft,
-      color: 'red',
+      color: PALETTE.bad,
     },
-    { label: messages.summaryShort.Unknown, count: summary.unknown, color: 'gray' },
+    { label: messages.summaryShort.Unknown, count: summary.unknown, color: PALETTE.unknown },
   ];
 
   return (

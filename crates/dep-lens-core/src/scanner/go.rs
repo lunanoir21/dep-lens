@@ -31,9 +31,9 @@ fn module_cache_dir() -> PathBuf {
         .or_else(|_| std::env::var("GOPATH"))
         .map(PathBuf::from)
         .unwrap_or_else(|_| {
-            std::env::var("HOME")
-                .map(|home| Path::new(&home).join("go"))
-                .unwrap_or_else(|_| PathBuf::from("go"))
+            super::home_dir()
+                .map(|home| home.join("go"))
+                .unwrap_or_else(|| PathBuf::from("go"))
         });
     gopath.join("pkg").join("mod")
 }

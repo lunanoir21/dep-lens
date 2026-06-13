@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Text } from 'ink';
 
 import { useMessages } from './i18n-context.js';
+import { PALETTE } from './theme.js';
 
 export function HelpOverlay(): React.JSX.Element {
   const messages = useMessages();
@@ -10,15 +11,15 @@ export function HelpOverlay(): React.JSX.Element {
   const right = messages.help.bindings.slice(half);
 
   return (
-    <Box flexDirection="column" borderStyle="double" borderColor="yellow" paddingX={2} paddingY={1}>
-      <Text bold color="yellow">
+    <Box flexDirection="column" borderStyle="double" borderColor={PALETTE.accent} paddingX={2} paddingY={1}>
+      <Text bold color={PALETTE.accent}>
         {" "}{messages.help.title.toUpperCase()}{" "}
       </Text>
       <Box marginTop={1}>
         <Box flexDirection="column" width="50%">
           {left.map(([key, description]) => (
             <Text key={key}>
-              <Text bold color="cyan">{key.padEnd(12)}</Text>
+              <Text bold color={PALETTE.brand}>{key.padEnd(12)}</Text>
               <Text>{description}</Text>
             </Text>
           ))}
@@ -26,7 +27,7 @@ export function HelpOverlay(): React.JSX.Element {
         <Box flexDirection="column" width="50%">
           {right.map(([key, description]) => (
             <Text key={key}>
-              <Text bold color="cyan">{key.padEnd(12)}</Text>
+              <Text bold color={PALETTE.brand}>{key.padEnd(12)}</Text>
               <Text>{description}</Text>
             </Text>
           ))}

@@ -4,12 +4,21 @@ import { Box, Text } from 'ink';
 import { format } from '../i18n.js';
 import { useDots, useSpinner } from './hooks.js';
 import { useMessages } from './i18n-context.js';
+import { PALETTE } from './theme.js';
 
-export function ScanningScreen(): React.JSX.Element {
+export interface ScanningScreenProps {
+  version: string;
+}
+
+const FACE_TOP = '╭───────╮';
+const FACE_BOTTOM = '╰───────╯';
+
+export function ScanningScreen({ version }: ScanningScreenProps): React.JSX.Element {
   const messages = useMessages();
   const spinner = useSpinner();
+  const dots = useDots();
   const [seconds, setSeconds] = useState(0);
-  
+
   useEffect(() => {
     const id = setInterval(() => {
       setSeconds((value) => value + 1);
@@ -19,28 +28,32 @@ export function ScanningScreen(): React.JSX.Element {
     };
   }, []);
 
+  const barWidth = 30;
+  const filled = (seconds % barWidth) + 1;
+
   return (
-    <Box flexDirection="column" borderStyle="double" borderColor="cyan" paddingX={4} paddingY={1} alignItems="center">
-      <Text bold color="cyan">
-        {"  "}____  _____ ____  _     _____ _   _ ____  {"  \n"}
-        {"  "}|  _ \| ____|  _ \| |   | ____| \ | / ___| {"  \n"}
-        {"  "}| | | |  _| | |_) | |   |  _| |  \| \___ \ {"  \n"}
-        {"  "}| |_| | |___|  __/| |___| |___| |\  |___) |{"  \n"}
-        {"  "}|____/|_____|_|   |_____|_____|_| \_|____/ {"  \n"}
-      </Text>
-      
-      <Box marginTop={1} flexDirection="column" alignItems="center">
-        <Text bold>
-          <Text color="yellow">{spinner}</Text> {messages.scanning.title.toUpperCase()}
-        </Text>
-        <Text color="gray">
-          {format(messages.scanning.elapsed, { seconds })}
-        </Text>
-      </Box>
-      
-      <Box marginTop={1}>
-        <Text color="cyan">{"█".repeat((seconds % 20) + 1)}</Text>
-        <Text color="gray">{"░".repeat(20 - (seconds % 20))}</Text>
+    <Box flexDirection="column" paddingX={2} paddingY={1}>
+      <Box>
+        <Box flexDirection="column" marginRight={2}>
+          <Text color={PALETTE.brand}>{FACE_TOP}</Text>
+          <Text color={PALETTE.brand}>│ {spinner}   {spinner} │</Text>
+          <Text color={PALETTE.brand}>│   ◠   │</Text>
+          <Text color={PALETTE.brand}>{FACE_BOTTOM}</Text>
+        </Box>
+        <Box flexDirection="column">
+          <Text>
+            <Text bold color={PALETTE.brand}>DEP-LENS</Text>
+            <Text color={PALETTE.dim}> v{version}</Text>
+          </Text>
+          <Text>
+            <Text color={PALETTE.brand}>{'█'.repeat(filled)}</Text>
+            <Text color={PALETTE.dim}>{'░'.repeat(barWidth - filled)}</Text>
+          </Text>
+          <Text bold>
+            {messages.scanning.title}{dots}
+          </Text>
+          <Text color={PALETTE.dim}>{format(messages.scanning.elapsed, { seconds })}</Text>
+        </Box>
       </Box>
     </Box>
   );

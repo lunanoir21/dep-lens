@@ -16,10 +16,10 @@ export interface ScanOptions {
 }
 
 const PLATFORM_PACKAGES: Record<string, string> = {
-  'linux-x64': 'dep-lens-linux-x64',
-  'darwin-arm64': 'dep-lens-darwin-arm64',
-  'darwin-x64': 'dep-lens-darwin-x64',
-  'win32-x64': 'dep-lens-win32-x64',
+  'linux-x64': '@lunanoir/dep-lens-linux-x64',
+  'darwin-arm64': '@lunanoir/dep-lens-darwin-arm64',
+  'darwin-x64': '@lunanoir/dep-lens-darwin-x64',
+  'win32-x64': '@lunanoir/dep-lens-win32-x64',
 };
 
 function binaryName(): string {

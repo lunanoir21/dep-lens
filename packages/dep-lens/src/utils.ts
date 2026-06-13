@@ -6,6 +6,7 @@ import type {
   Summary,
 } from './types.js';
 import type { FailOn } from './args.js';
+import { PALETTE } from './ui/theme.js';
 
 export type SortColumn =
   | 'name'
@@ -137,6 +138,11 @@ export function pad(text: string, width: number): string {
   return truncate(text, width).padEnd(width);
 }
 
+/** Dim horizontal rule used to separate sections, e.g. "──────────". */
+export function buildSectionDivider(width: number): string {
+  return '─'.repeat(Math.max(0, width));
+}
+
 export interface RatioSegment {
   category: LicenseCategory;
   char: string;
@@ -149,10 +155,10 @@ const SEGMENT_STYLE: ReadonlyArray<{
   char: string;
   color: string;
 }> = [
-  { category: 'Permissive', char: '#', color: 'green' },
-  { category: 'WeakCopyleft', char: '=', color: 'yellow' },
-  { category: 'StrongCopyleft', char: '!', color: 'red' },
-  { category: 'Unknown', char: '?', color: 'gray' },
+  { category: 'Permissive', char: '#', color: PALETTE.good },
+  { category: 'WeakCopyleft', char: '=', color: PALETTE.ok },
+  { category: 'StrongCopyleft', char: '!', color: PALETTE.bad },
+  { category: 'Unknown', char: '?', color: PALETTE.unknown },
 ];
 
 /**

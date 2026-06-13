@@ -1,0 +1,8 @@
+{
+  "name": "cpp-test-project",
+  "version": "0.1.0",
+  "dependencies": [
+    "fmt",
+    { "name": "openssl" }
+  ]
+}

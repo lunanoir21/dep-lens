@@ -6,7 +6,7 @@ import { format, type Messages } from '../i18n.js';
 import { pad, type SortColumn } from '../utils.js';
 import { useRevealOnce } from './hooks.js';
 import { useMessages } from './i18n-context.js';
-import { categoryColor } from './theme.js';
+import { categoryColor, PALETTE } from './theme.js';
 
 export interface PackageTableProps {
   packages: readonly ClassifiedPackage[];
@@ -119,14 +119,14 @@ export function PackageTable({
       : 0;
 
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1}>
-      <Text bold color="white" underline>
+    <Box flexDirection="column" borderStyle="round" borderColor={PALETTE.dim} paddingX={1}>
+      <Text bold color={PALETTE.brand} underline>
         {header}
       </Text>
       <Box flexDirection="row">
         <Box flexDirection="column" flexGrow={1}>
           {rows.length === 0 ? (
-            <Text color="gray">{messages.table.empty}</Text>
+            <Text color={PALETTE.dim}>{messages.table.empty}</Text>
           ) : (
             rows.map((pkg, index) => {
               const absoluteIndex = start + index;
@@ -160,7 +160,7 @@ export function PackageTable({
                 while (matchIndex !== -1) {
                   parts.push(line.slice(lastIndex, matchIndex));
                   parts.push(
-                    <Text key={matchIndex} underline bold color="cyan">
+                    <Text key={matchIndex} underline bold color={PALETTE.brand}>
                       {line.slice(matchIndex, matchIndex + needle.length)}
                     </Text>,
                   );
@@ -192,7 +192,14 @@ export function PackageTable({
         {packages.length > viewport && (
           <Box flexDirection="column" width={1} marginLeft={1}>
             {Array.from({ length: scrollbarHeight }).map((_, i) => (
-              <Text key={i} color="gray">
+              <Text
+                key={i}
+                color={
+                  i >= scrollbarThumbTop && i < scrollbarThumbTop + scrollbarThumbHeight
+                    ? PALETTE.brand
+                    : PALETTE.dim
+                }
+              >
                 {i >= scrollbarThumbTop && i < scrollbarThumbTop + scrollbarThumbHeight
                   ? '┃'
                   : '│'}
@@ -202,7 +209,7 @@ export function PackageTable({
         )}
       </Box>
       <Box justifyContent="space-between">
-        <Text color="gray">
+        <Text color={PALETTE.dim}>
           {packages.length === 0
             ? format(messages.table.rows, { start: 0, end: 0, total: 0 })
             : format(messages.table.rows, {
@@ -211,7 +218,7 @@ export function PackageTable({
                 total: packages.length,
               })}
         </Text>
-        <Text color="gray">{messages.table.rows.includes(' / ') ? `sıralama: ${sortColumn}` : `sort: ${sortColumn}`}</Text>
+        <Text color={PALETTE.dim}>{messages.table.rows.includes(' / ') ? `sıralama: ${sortColumn}` : `sort: ${sortColumn}`}</Text>
       </Box>
     </Box>
   );

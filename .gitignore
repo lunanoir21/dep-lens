@@ -5,9 +5,11 @@ target/
 # Node.js
 node_modules/
 
-# The fixture project's fake packages are part of the test suite
+# The fixture projects' fake packages are part of the test suite
 !test-project/node_modules/
 !test-project/node_modules/**
+!examples/npm-test-project/node_modules/
+!examples/npm-test-project/node_modules/**
 dist/
 *.tsbuildinfo
 npm-debug.log*

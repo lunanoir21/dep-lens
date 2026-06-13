@@ -16,6 +16,11 @@ export interface Messages {
   header: {
     scanned: string;
     packages: string;
+    health: {
+      good: string;
+      ok: string;
+      poor: string;
+    };
   };
   categories: Record<LicenseCategory, string>;
   summaryShort: Record<LicenseCategory, string>;
@@ -90,6 +95,11 @@ export const EN: Messages = {
   header: {
     scanned: 'scanned',
     packages: 'packages',
+    health: {
+      good: 'good',
+      ok: 'needs attention',
+      poor: 'at risk',
+    },
   },
   categories: {
     Permissive: 'Permissive',
@@ -200,6 +210,11 @@ export const TR: Messages = {
   header: {
     scanned: 'tarandı',
     packages: 'paket',
+    health: {
+      good: 'iyi',
+      ok: 'dikkat gerekli',
+      poor: 'riskli',
+    },
   },
   categories: {
     Permissive: 'İzinli',

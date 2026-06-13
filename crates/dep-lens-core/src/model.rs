@@ -10,6 +10,9 @@ pub enum Ecosystem {
     Python,
     Ruby,
     Php,
+    Java,
+    Dart,
+    Cpp,
 }
 
 /// Whether a dependency is direct (declared in the project manifest) or

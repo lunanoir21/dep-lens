@@ -1,26 +1,42 @@
 # dep-lens
 
-Scan the licenses of your npm/yarn/pnpm and Cargo dependencies and report
-commercial-use risk. Rust core for fast scanning, Node.js wrapper with a fully
-interactive terminal UI.
+Scan your project's third-party dependencies across **9 ecosystems**, classify
+every license (permissive / weak copyleft / strong copyleft / unknown),
+score commercial-use risk, and browse the results in a fast, colorful
+terminal UI. Rust core for scanning, Node.js wrapper for a fully interactive
+[Ink](https://github.com/vadimdemedes/ink)-based TUI.
 
-```
-+--------------------------------------------------------------------+
-| dep-lens my-project          scanned 2026-06-12T08:30:00Z  pkgs 312 |
-+--------------------------------------------------------------------+
- Permissive 287 (92.0%)  Weak 14 (4.5%)  Strong 3 (1.0%)  Unknown 8 (2.6%)
-+--------------------------------------------------------------------+
-| PACKAGE ^         VERSION   LICENSE     CATEGORY         RISK  ...  |
-| left-pad          1.3.0     MIT         Permissive       0     yes  |
-| some-agpl-lib     2.1.0     AGPL-3.0    Strong Copyleft  100   ...  |
-+--------------------------------------------------------------------+
- up/down move  f filter  s sort  r reverse  e export  q quit
-```
+![dep-lens terminal UI](docs/assets/tui-screenshot.png)
+
+## Supported ecosystems
+
+| Ecosystem | Manifest / lockfile | License source |
+| --- | --- | --- |
+| npm / yarn / pnpm | `package.json` + `node_modules` | `package.json` `license` field, falls back to LICENSE file |
+| Cargo | `Cargo.toml` (via `cargo metadata`) | crate metadata, falls back to LICENSE file |
+| Go | `go.mod` | LICENSE file in the module cache (`$GOPATH/pkg/mod`) |
+| Python | `poetry.lock`, `uv.lock`, `Pipfile.lock`, `requirements.txt`, or `pyproject.toml` | `*.dist-info/METADATA` in `.venv`/`venv` |
+| Ruby | `Gemfile.lock` | gemspec `license`, falls back to vendored LICENSE file |
+| PHP | `composer.lock` | `composer.json`/`composer.lock` `license` field |
+| Java | `pom.xml`, `gradle.lockfile`, or `build.gradle`/`.kts` | cached POM in `~/.m2/repository` |
+| Dart / Flutter | `pubspec.lock` | LICENSE file in `~/.pub-cache/hosted/pub.dev` |
+| C/C++ | `vcpkg.json`, `conanfile.txt` | `vcpkg.json` fields, falls back to `vcpkg_installed/*/share/<port>/copyright`; Conan's `conanfile.txt` lists `[requires]` packages but carries no license metadata, so those report as `Unknown` |
+
+When a package declares no usable license, dep-lens falls back to scanning
+its LICENSE/COPYING file and recognizes MIT, Apache, the GPL family, BSD,
+ISC, MPL, EPL, BSL, Unlicense, and CC0 from the text itself.
+
+Python and Java work even **without a lockfile**: with only a `pyproject.toml`
+(PEP 621 `dependencies` or Poetry's `[tool.poetry.dependencies]`), dep-lens
+lists every declared package with its version specifier; with only a
+`build.gradle`/`build.gradle.kts` (no `gradle.lockfile`), it parses
+`group:artifact:version` coordinates straight out of `implementation(...)` /
+`testImplementation(...)` calls.
 
 ## Install
 
 ```sh
-npm install -g dep-lens
+npm install -g @lunanoir/dep-lens
 ```
 
 The package ships prebuilt native binaries for Linux x64, macOS x64/arm64, and
@@ -28,8 +44,10 @@ Windows x64 via optional dependencies; the right one is selected automatically.
 
 ### From source (one command)
 
+Linux, macOS, or WSL/Git-Bash:
+
 ```sh
-git clone https://github.com/dep-lens/dep-lens && cd dep-lens
+git clone https://github.com/lunanoir21/dep-lens && cd dep-lens
 ./install.sh
 ```
 
@@ -39,6 +57,21 @@ halves, installs a launcher to `~/.local/bin/dep-lens`, and adds that
 directory to your PATH if it is not there yet (via `fish_add_path` on fish,
 or a guarded line in `.zshrc` / `.bashrc`). Re-run it any time to rebuild;
 `./install.sh --uninstall` removes the launcher.
+
+Native Windows (PowerShell):
+
+```powershell
+git clone https://github.com/lunanoir21/dep-lens; cd dep-lens
+.\install.ps1
+```
+
+Same checks and build steps, but installs `dep-lens.cmd` to
+`%LOCALAPPDATA%\dep-lens\bin` and adds it to your user `PATH`.
+`.\install.ps1 -Uninstall` removes it.
+
+dep-lens itself is cross-platform: the Rust core and Node CLI build and run
+on Linux, macOS, and Windows, and the prebuilt npm packages cover all three
+(`dep-lens-linux-x64`, `dep-lens-darwin-x64`/`-arm64`, `dep-lens-win32-x64`).
 
 ## Usage
 
@@ -64,6 +97,34 @@ dep-lens --ignore left-pad --ignore internal-pkg-a,internal-pkg-b
 # CI/CD gate: exit code 1 when strong copyleft licenses are present
 dep-lens --fail-on gpl     # GPL-2.0, GPL-3.0, AGPL-3.0
 dep-lens --fail-on agpl    # AGPL-3.0 only
+
+# Self-check: verify the scanner binary and which ecosystems it detects here
+dep-lens --test
+```
+
+### Setup wizard and `--test`
+
+Right after `npm install`, dep-lens runs a short interactive setup wizard
+(skipped automatically in CI or non-interactive installs): it lists the
+ecosystems it detects in your project, lets you pick a default UI language
+(saved to `~/.config/dep-lens/config.json`), and offers to add the npm global
+bin directory to your shell's `PATH` if it's missing.
+
+`dep-lens --test` re-runs those checks any time: it confirms the native
+binary runs, performs a scan, and reports per-ecosystem whether manifests it
+found actually produced packages - useful for verifying an install or a CI
+environment.
+
+```
+dep-lens --test (/path/to/project)
+
+  PASS  native scanner binary  dep-lens-core 0.1.0
+  PASS  scan                   31 package(s) found
+  PASS  npm / yarn / pnpm      19 package(s)
+  PASS  Cargo                  3 package(s)
+  PASS  license coverage       3 package(s) with unknown license
+
+all checks passed
 ```
 
 ### TUI keys
@@ -81,16 +142,20 @@ dep-lens --fail-on agpl    # AGPL-3.0 only
 | h             | Help overlay                                            |
 | q             | Quit                                                    |
 
-Risky packages are highlighted red, caution-level packages yellow, clean
-packages green, and unidentified licenses gray.
+The header shows an overall health score (0-100) with a "doctor face" that
+reacts to it, plus a score bar. Rows are colored by category - emerald for
+permissive, amber for weak copyleft, rose for strong copyleft, and slate for
+unknown - and the same palette drives the summary bar, ratio bar, and
+scrollbar.
 
 The TUI is fully localized; `--tr` switches every label, advice text, and
 status message to Turkish. While scanning, an animated progress screen shows
-an ASCII spinner and elapsed time; once results land, the summary counters
-count up with an ease-out curve, a color-coded ratio bar (`#` permissive,
-`=` weak, `!` strong, `?` unknown) grows to its final proportions, and table
-rows reveal progressively. Status messages clear themselves after a few
-seconds. All animation is plain ASCII and ANSI colors; no emoji anywhere.
+the same face with an ASCII spinner and elapsed time; once results land, the
+summary counters count up with an ease-out curve, the ratio bar (`#`
+permissive, `=` weak, `!` strong, `?` unknown) grows to its final
+proportions, and table rows reveal progressively. Status messages clear
+themselves after a few seconds. All animation is plain ASCII and truecolor
+ANSI; no emoji anywhere.
 
 ### CI example
 
@@ -113,23 +178,20 @@ restrictive option (dual licensing lets you choose), `MIT AND GPL-2.0` as the
 most restrictive. `-only` / `-or-later` suffixes and `WITH` exception clauses
 are normalized away.
 
-When a package declares no license (or only `SEE LICENSE IN ...`), dep-lens
-reads its LICENSE/COPYING file and identifies MIT, Apache, the GPL family,
-BSD, ISC, MPL, EPL, BSL, Unlicense, and CC0 from the text. The JSON report
-records where each license came from in the `licenseSource` field
-(`declared`, `licenseFile`, or `none`).
+The JSON report records where each license came from in the `licenseSource`
+field (`declared`, `licenseFile`, or `none`).
 
 This tool produces an automated report to support a review. It is not legal
 advice.
 
 ## How it works
 
-- `crates/dep-lens-core` (Rust) walks `node_modules` reading each package's
-  `package.json`, runs `cargo metadata --format-version 1` for Cargo projects,
-  classifies licenses, scores risk, and prints a JSON (or HTML) report to
-  stdout.
+- `crates/dep-lens-core` (Rust) scans `node_modules`, runs
+  `cargo metadata --format-version 1`, and parses the lockfiles/manifests of
+  the other seven ecosystems above, classifies licenses, scores risk, and
+  prints a JSON (or HTML) report to stdout.
 - `packages/dep-lens` (TypeScript) spawns that binary, parses the JSON, and
-  renders the interactive TUI with [ink](https://github.com/vadimdemedes/ink).
+  renders the interactive TUI with [Ink](https://github.com/vadimdemedes/ink).
 
 ## Development
 
@@ -143,18 +205,79 @@ npm run lint           # clippy -D warnings + rustfmt check
 
 # Run the CLI from the working tree (uses target/release automatically)
 node packages/dep-lens/dist/cli.js --path .
-
-# End-to-end check against the bundled fixture project
-python3 scripts/verify-fixture.py
 ```
 
-`test-project/` is a fixture with fake packages covering every supported
-license scenario (declared, LICENSE-file-only, `SEE LICENSE IN` placeholders,
-SPDX expressions, scoped and nested npm packages, Cargo path dependencies).
-`scripts/verify-fixture.py` scans it and asserts the exact classification of
-all 22 packages plus the `--fail-on`, `--ignore`, and `--html` behavior.
+### Fixtures
+
+- `test-project/` is a combined fixture covering every license scenario
+  (declared, LICENSE-file-only, `SEE LICENSE IN` placeholders, SPDX
+  expressions, scoped and nested npm packages, Cargo path dependencies) across
+  npm, Cargo, Go, Python, Ruby, and PHP. `scripts/verify-fixture.py` scans it
+  and asserts the exact classification of every package plus the `--fail-on`,
+  `--ignore`, and `--html` behavior:
+
+  ```sh
+  python3 scripts/verify-fixture.py
+  ```
+
+- `examples/` has one minimal, self-contained fixture per ecosystem
+  (including Java, Dart, and C/C++), each runnable on its own. See
+  [`examples/README.md`](examples/README.md) for details, or run all of them
+  at once:
+
+  ```sh
+  ./examples/verify.sh
+  ```
 
 `DEP_LENS_BINARY=/path/to/dep-lens-core` overrides binary resolution.
+`DEP_LENS_GOPATH`, `DEP_LENS_GEM_HOME`, `DEP_LENS_M2`,
+`DEP_LENS_PUB_CACHE`, and `DEP_LENS_SITE_PACKAGES` override the
+ecosystem-specific license caches used by Go, Ruby, Java, Dart, and Python
+respectively.
+
+### Publishing to npm
+
+Releases are built and published by `.github/workflows/release.yml`. To cut
+a release:
+
+1. Bump `version` in `packages/dep-lens/package.json` **and** in every
+   `packages/dep-lens-*/package.json`, and update the matching
+   `optionalDependencies` versions in `packages/dep-lens/package.json` so
+   they all match.
+2. Commit, then tag and push:
+
+   ```sh
+   git tag v0.2.0
+   git push origin v0.2.0
+   ```
+
+3. The workflow builds `dep-lens-core` for Linux x64, macOS x64/arm64, and
+   Windows x64 in parallel, stages each binary into its platform package's
+   `bin/`, then runs `npm publish --access public` for the four platform
+   packages followed by the main `dep-lens` package.
+4. This requires an `NPM_TOKEN` repository secret: an npm
+   [automation token](https://docs.npmjs.com/creating-and-viewing-access-tokens)
+   for an account with publish rights to the `dep-lens` and `dep-lens-*`
+   packages (or org access if published under a scope).
+
+To publish manually instead (e.g. first release, or to a different
+registry), build each platform's binary on a matching machine (or
+cross-compile with `cargo build --release --target <triple>`), copy it into
+`packages/dep-lens-<platform>/bin/`, then from the repo root:
+
+```sh
+npm install && npm run build:cli
+for pkg in dep-lens-linux-x64 dep-lens-darwin-x64 dep-lens-darwin-arm64 dep-lens-win32-x64; do
+  (cd "packages/$pkg" && npm publish)
+done
+(cd packages/dep-lens && npm publish)
+```
+
+`@lunanoir/dep-lens` and `@lunanoir/dep-lens-linux-x64` are published.
+`@lunanoir/dep-lens-darwin-x64`, `@lunanoir/dep-lens-darwin-arm64`, and
+`@lunanoir/dep-lens-win32-x64` are published by the CI release workflow once
+their binaries are built; until then, macOS/Windows users should use
+`install.sh` / `install.ps1`.
 
 ## License
 

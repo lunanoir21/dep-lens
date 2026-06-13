@@ -9,6 +9,7 @@ import { ScanningScreen } from './ScanningScreen.js';
 
 export interface RootProps {
   locale: Locale;
+  version: string;
   scan: () => Promise<Report>;
   getHtml: () => Promise<string>;
   onReport: (report: Report) => void;
@@ -26,6 +27,7 @@ type Phase =
  */
 export function Root({
   locale,
+  version,
   scan,
   getHtml,
   onReport,
@@ -60,9 +62,9 @@ export function Root({
 
   return (
     <I18nContext.Provider value={getMessages(locale)}>
-      {phase.name === 'scanning' ? <ScanningScreen /> : null}
+      {phase.name === 'scanning' ? <ScanningScreen version={version} /> : null}
       {phase.name === 'error' ? <ErrorScreen message={phase.message} /> : null}
-      {phase.name === 'ready' ? <App report={phase.report} getHtml={getHtml} /> : null}
+      {phase.name === 'ready' ? <App report={phase.report} version={version} getHtml={getHtml} /> : null}
     </I18nContext.Provider>
   );
 }

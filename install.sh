@@ -35,7 +35,7 @@ OS="$(uname -s)"
 case "$OS" in
     Linux|Darwin) ;;
     MINGW*|MSYS*|CYGWIN*)
-        fail "Windows detected. Use 'npm install -g dep-lens' (after release) or run this script inside WSL."
+        fail "Windows detected. Run 'install.ps1' from PowerShell instead, or use 'npm install -g dep-lens' (once published), or run this script inside WSL."
         ;;
     *)
         fail "unsupported operating system: $OS"

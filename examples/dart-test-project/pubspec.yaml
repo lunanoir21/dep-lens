@@ -1,0 +1,8 @@
+name: dart_test_project
+description: Fixture project used to exercise dep-lens's Dart scanner.
+version: 0.1.0
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  http: ^1.2.0

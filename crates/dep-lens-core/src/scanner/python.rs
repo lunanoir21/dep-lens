@@ -40,6 +40,12 @@ fn read_lockfile(project_root: &Path) -> io::Result<Vec<Package>> {
         let raw = fs::read_to_string(poetry_lock)?;
         return Ok(parse_poetry_lock(&raw));
     }
+    // uv.lock shares poetry.lock's `[[package]]` / `name` / `version` shape.
+    let uv_lock = project_root.join("uv.lock");
+    if uv_lock.is_file() {
+        let raw = fs::read_to_string(uv_lock)?;
+        return Ok(parse_poetry_lock(&raw));
+    }
     let pipfile_lock = project_root.join("Pipfile.lock");
     if pipfile_lock.is_file() {
         let raw = fs::read_to_string(pipfile_lock)?;
@@ -48,9 +54,87 @@ fn read_lockfile(project_root: &Path) -> io::Result<Vec<Package>> {
     let requirements = project_root.join("requirements.txt");
     if requirements.is_file() {
         let raw = fs::read_to_string(requirements)?;
-        return Ok(parse_requirements(&raw));
+        let packages = parse_requirements(&raw);
+        if !packages.is_empty() {
+            return Ok(packages);
+        }
+    }
+    // No lockfile (or only unpinned requirements): fall back to the
+    // declared dependency specs in pyproject.toml so the project still
+    // shows up instead of an empty report.
+    let pyproject = project_root.join("pyproject.toml");
+    if pyproject.is_file() {
+        let raw = fs::read_to_string(pyproject)?;
+        let mut packages = parse_pyproject_dependencies(&raw);
+        // Every dependency declared directly in pyproject.toml is, by
+        // definition, a direct dependency (there is no lockfile to walk
+        // the transitive graph).
+        for pkg in &mut packages {
+            pkg.dependency_type = DependencyType::Direct;
+        }
+        return Ok(packages);
     }
     Ok(Vec::new())
+}
+
+/// Parse declared dependencies straight from `pyproject.toml` when no
+/// lockfile is available. Versions are the raw specifier (e.g. `>=2.31,<3`
+/// or `*` when unconstrained) rather than a resolved version.
+pub fn parse_pyproject_dependencies(raw: &str) -> Vec<Package> {
+    let mut packages = Vec::new();
+    let mut section = String::new();
+    let mut in_pep621_deps = false;
+    for line in raw.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('[') {
+            section = trimmed.trim_matches(['[', ']']).to_string();
+            in_pep621_deps = false;
+            continue;
+        }
+        if section == "project" && trimmed.starts_with("dependencies") && trimmed.contains('[') {
+            in_pep621_deps = !trimmed.contains(']');
+            for spec in extract_quoted(trimmed) {
+                if let Some(pkg) = pep508_package(&spec) {
+                    packages.push(pkg);
+                }
+            }
+            continue;
+        }
+        if in_pep621_deps {
+            if trimmed.contains(']') {
+                in_pep621_deps = false;
+            }
+            for spec in extract_quoted(trimmed) {
+                if let Some(pkg) = pep508_package(&spec) {
+                    packages.push(pkg);
+                }
+            }
+            continue;
+        }
+        if section == "tool.poetry.dependencies" || section == "tool.poetry.dev-dependencies" {
+            if let Some((name, version)) = trimmed.split_once('=') {
+                let name = name.trim();
+                if !name.is_empty() && name != "python" {
+                    let version = version.trim().trim_matches('"');
+                    let version = if version.is_empty() { "*" } else { version };
+                    packages.push(python_package(name.to_string(), version.to_string()));
+                }
+            }
+        }
+    }
+    packages
+}
+
+/// Split a PEP 508 requirement spec ("requests>=2.31,<3") into a package
+/// with the version constraint kept as-is (or `*` when unconstrained).
+fn pep508_package(spec: &str) -> Option<Package> {
+    let name = requirement_name(spec);
+    if name.is_empty() {
+        return None;
+    }
+    let version = spec[name.len()..].trim();
+    let version = if version.is_empty() { "*" } else { version };
+    Some(python_package(name, version.to_string()))
 }
 
 /// PyPI treats `-`, `_`, and `.` as equivalent and names as case-insensitive.
@@ -131,6 +215,13 @@ fn find_site_packages(project_root: &Path) -> Vec<PathBuf> {
     }
     let mut found = Vec::new();
     for venv in [".venv", "venv"] {
+        // Windows venvs put packages directly under Lib\site-packages (no
+        // python3.x version directory like POSIX venvs use).
+        let windows_site = project_root.join(venv).join("Lib").join("site-packages");
+        if windows_site.is_dir() {
+            found.push(windows_site);
+        }
+
         let lib = project_root.join(venv).join("lib");
         let Ok(entries) = fs::read_dir(&lib) else {
             continue;
@@ -160,6 +251,14 @@ pub fn parse_metadata_license(raw: &str) -> Option<String> {
     for line in raw.lines() {
         if line.is_empty() {
             break; // headers end at the first blank line
+        }
+        // PEP 639: modern packages declare an SPDX expression instead of
+        // (or in addition to) the free-form `License:` header.
+        if let Some(value) = line.strip_prefix("License-Expression:") {
+            let value = value.trim();
+            if !value.is_empty() {
+                return Some(value.to_string());
+            }
         }
         if let Some(value) = line.strip_prefix("License:") {
             let value = value.trim();
@@ -235,11 +334,7 @@ pub fn parse_requirements(raw: &str) -> Vec<Package> {
         let Some((name, version)) = trimmed.split_once("==") else {
             continue;
         };
-        let version = version
-            .split([';', ' ', '#'])
-            .next()
-            .unwrap_or("")
-            .trim();
+        let version = version.split([';', ' ', '#']).next().unwrap_or("").trim();
         let name = requirement_name(name.trim());
         if !name.is_empty() && !version.is_empty() {
             packages.push(python_package(name, version.to_string()));
@@ -295,6 +390,12 @@ mod tests {
     }
 
     #[test]
+    fn metadata_license_expression_wins() {
+        let raw = "Metadata-Version: 2.4\nName: requests\nLicense-Expression: Apache-2.0\nClassifier: License :: OSI Approved :: MIT License\n\nBody text";
+        assert_eq!(parse_metadata_license(raw), Some("Apache-2.0".to_string()));
+    }
+
+    #[test]
     fn metadata_without_license_yields_none() {
         let raw = "Metadata-Version: 2.1\nName: opaque\n\nLicense: MIT appears after blank line so ignored";
         assert_eq!(parse_metadata_license(raw), None);
@@ -310,5 +411,32 @@ mod tests {
     fn requirement_name_strips_version_spec() {
         assert_eq!(requirement_name("requests>=2.31,<3"), "requests");
         assert_eq!(requirement_name("Flask[async]==3.0"), "Flask");
+    }
+
+    #[test]
+    fn uv_lock_uses_poetry_lock_shape() {
+        let raw = "[[package]]\nname = \"httpx\"\nversion = \"0.27.0\"\n";
+        let packages = parse_poetry_lock(raw);
+        assert_eq!(packages[0].name, "httpx");
+        assert_eq!(packages[0].version, "0.27.0");
+    }
+
+    #[test]
+    fn pep621_dependencies_keep_version_specs() {
+        let raw = "[project]\nname = \"demo\"\ndependencies = [\n  \"requests>=2.31,<3\",\n  \"click\",\n]\n";
+        let packages = parse_pyproject_dependencies(raw);
+        let names: Vec<&str> = packages.iter().map(|p| p.name.as_str()).collect();
+        assert_eq!(names, vec!["requests", "click"]);
+        assert_eq!(packages[0].version, ">=2.31,<3");
+        assert_eq!(packages[1].version, "*");
+    }
+
+    #[test]
+    fn poetry_dependencies_without_lockfile() {
+        let raw = "[tool.poetry.dependencies]\npython = \"^3.12\"\nrequests = \"^2.31\"\n";
+        let packages = parse_pyproject_dependencies(raw);
+        let names: Vec<&str> = packages.iter().map(|p| p.name.as_str()).collect();
+        assert_eq!(names, vec!["requests"]);
+        assert_eq!(packages[0].version, "^2.31");
     }
 }

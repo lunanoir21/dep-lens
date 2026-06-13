@@ -1,12 +1,12 @@
 {
-  "name": "dep-lens",
+  "name": "@lunanoir/dep-lens",
   "version": "0.1.0",
-  "description": "License scanner for npm and Cargo dependencies with commercial risk reporting",
+  "description": "Dependency license scanner across npm, Cargo, Go, Python, Ruby, PHP, Java, Dart, and C/C++ with commercial risk reporting",
   "type": "module",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dep-lens/dep-lens.git"
+    "url": "git+https://github.com/lunanoir21/dep-lens.git"
   },
   "bin": {
     "dep-lens": "dist/cli.js"
@@ -17,6 +17,9 @@
   ],
   "engines": {
     "node": ">=18.18"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "keywords": [
     "license",
@@ -29,17 +32,18 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "tsc && node --test \"dist/test/**/*.test.js\""
+    "test": "tsc && node --test \"dist/test/**/*.test.js\"",
+    "postinstall": "node dist/postinstall.js"
   },
   "dependencies": {
     "ink": "^5.2.1",
     "react": "^18.3.1"
   },
   "optionalDependencies": {
-    "dep-lens-darwin-arm64": "0.1.0",
-    "dep-lens-darwin-x64": "0.1.0",
-    "dep-lens-linux-x64": "0.1.0",
-    "dep-lens-win32-x64": "0.1.0"
+    "@lunanoir/dep-lens-darwin-arm64": "0.1.0",
+    "@lunanoir/dep-lens-darwin-x64": "0.1.0",
+    "@lunanoir/dep-lens-linux-x64": "0.1.0",
+    "@lunanoir/dep-lens-win32-x64": "0.1.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

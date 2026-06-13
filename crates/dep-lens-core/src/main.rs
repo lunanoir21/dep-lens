@@ -173,6 +173,18 @@ fn run() -> Result<(), String> {
         eprintln!("warning: php scan skipped: {e}");
         Vec::new()
     });
+    let java_packages = scanner::java::scan(&args.path).unwrap_or_else(|e| {
+        eprintln!("warning: java scan skipped: {e}");
+        Vec::new()
+    });
+    let dart_packages = scanner::dart::scan(&args.path).unwrap_or_else(|e| {
+        eprintln!("warning: dart scan skipped: {e}");
+        Vec::new()
+    });
+    let cpp_packages = scanner::cpp::scan(&args.path).unwrap_or_else(|e| {
+        eprintln!("warning: cpp scan skipped: {e}");
+        Vec::new()
+    });
 
     let mut packages = npm_packages;
     packages.extend(cargo_packages);
@@ -180,6 +192,9 @@ fn run() -> Result<(), String> {
     packages.extend(python_packages);
     packages.extend(ruby_packages);
     packages.extend(php_packages);
+    packages.extend(java_packages);
+    packages.extend(dart_packages);
+    packages.extend(cpp_packages);
 
     let project = args
         .project

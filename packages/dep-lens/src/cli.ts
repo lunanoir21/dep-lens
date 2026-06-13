@@ -7,6 +7,8 @@ import { render } from 'ink';
 
 import { parseArgs, USAGE, type CliOptions } from './args.js';
 import { renderCsv, renderHtml, renderMarkdown, runScan } from './bridge.js';
+import { readConfig } from './config.js';
+import { runSelfTest } from './selftest.js';
 import type { Report } from './types.js';
 import { violations } from './utils.js';
 import { Root } from './ui/Root.js';
@@ -53,7 +55,19 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (!options.localeExplicit) {
+    const config = await readConfig();
+    if (config.locale !== undefined) {
+      options.locale = config.locale;
+    }
+  }
+
   const scanOptions = { path: options.path, ignore: options.ignore, locale: options.locale };
+
+  if (options.test) {
+    process.exitCode = await runSelfTest(scanOptions);
+    return;
+  }
 
   if (options.json) {
     const report = await runScan(scanOptions);
@@ -99,6 +113,7 @@ async function main(): Promise<void> {
   const app = render(
     React.createElement(Root, {
       locale: options.locale,
+      version: packageVersion(),
       scan: () => runScan(scanOptions),
       getHtml: () => renderHtml(scanOptions),
       onReport: (report: Report) => {

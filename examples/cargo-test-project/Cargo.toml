@@ -1,0 +1,12 @@
+# Fixture project used to exercise dep-lens's Cargo scanner.
+[package]
+name = "cargo-test-project"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+exclude = ["vendor"]
+
+[dependencies]
+acme-utils = { path = "vendor/acme-utils" }

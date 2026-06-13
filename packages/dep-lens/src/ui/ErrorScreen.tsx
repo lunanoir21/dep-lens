@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Text, useApp, useInput } from 'ink';
 
 import { useMessages } from './i18n-context.js';
+import { PALETTE } from './theme.js';
 
 export interface ErrorScreenProps {
   message: string;
@@ -16,12 +17,12 @@ export function ErrorScreen({ message }: ErrorScreenProps): React.JSX.Element {
     }
   });
   return (
-    <Box flexDirection="column" borderStyle="classic" paddingX={2} paddingY={1}>
-      <Text bold color="red">
+    <Box flexDirection="column" borderStyle="classic" borderColor={PALETTE.bad} paddingX={2} paddingY={1}>
+      <Text bold color={PALETTE.bad}>
         {messages.error.title}
       </Text>
       <Text>{message}</Text>
-      <Text color="gray">{messages.error.hint}</Text>
+      <Text color={PALETTE.dim}>{messages.error.hint}</Text>
     </Box>
   );
 }

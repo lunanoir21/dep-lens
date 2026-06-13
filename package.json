@@ -9,10 +9,10 @@
   "scripts": {
     "build": "npm run build:core && npm run build:cli",
     "build:core": "cargo build --release",
-    "build:cli": "npm run build --workspace dep-lens",
+    "build:cli": "npm run build --workspace @lunanoir/dep-lens",
     "test": "npm run test:core && npm run test:cli",
     "test:core": "cargo test",
-    "test:cli": "npm run test --workspace dep-lens",
+    "test:cli": "npm run test --workspace @lunanoir/dep-lens",
     "lint": "cargo clippy --all-targets -- -D warnings && cargo fmt --check"
   }
 }

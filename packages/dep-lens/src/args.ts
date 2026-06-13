@@ -11,8 +11,10 @@ export interface CliOptions {
   path: string;
   ignore: string[];
   locale: Locale;
+  localeExplicit: boolean;
   help: boolean;
   version: boolean;
+  test: boolean;
 }
 
 export const USAGE = `dep-lens: scan dependencies for license risk
@@ -31,6 +33,8 @@ OPTIONS:
     --path <DIR>       Project directory to scan (default: current directory)
     --ignore <NAMES>   Comma-separated package names to exclude (repeatable)
     --tr               Turkish UI (Turkce arayuz)
+    --test             Run a self-check: verify the scanner binary and
+                       report which ecosystems it detects in --path
     --help             Show this help
     --version          Show version
 
@@ -61,8 +65,10 @@ export function parseArgs(argv: readonly string[]): CliOptions {
     path: '.',
     ignore: [],
     locale: 'en',
+    localeExplicit: false,
     help: false,
     version: false,
+    test: false,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -110,6 +116,10 @@ export function parseArgs(argv: readonly string[]): CliOptions {
       }
       case '--tr':
         options.locale = 'tr';
+        options.localeExplicit = true;
+        break;
+      case '--test':
+        options.test = true;
         break;
       case '--help':
       case '-h':

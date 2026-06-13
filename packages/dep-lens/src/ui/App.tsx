@@ -1,10 +1,10 @@
 import { writeFile } from 'node:fs/promises';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Text, useApp, useInput } from 'ink';
+import { Box, Text, useApp, useInput, useStdout } from 'ink';
 
 import type { LicenseCategory, Report } from '../types.js';
 import { format } from '../i18n.js';
-import { filterPackages, SORT_COLUMNS, sortPackages } from '../utils.js';
+import { buildSectionDivider, filterPackages, SORT_COLUMNS, sortPackages } from '../utils.js';
 import { DetailPane } from './DetailPane.js';
 import { ExportMenu, EXPORT_OPTION_COUNT } from './ExportMenu.js';
 import { FilterBar } from './FilterBar.js';
@@ -13,9 +13,11 @@ import { HelpOverlay } from './HelpOverlay.js';
 import { useMessages } from './i18n-context.js';
 import { PackageTable } from './PackageTable.js';
 import { SummaryBar } from './SummaryBar.js';
+import { PALETTE } from './theme.js';
 
 export interface AppProps {
   report: Report;
+  version: string;
   getHtml: () => Promise<string>;
 }
 
@@ -30,9 +32,11 @@ const QUICK_FILTERS: Record<string, LicenseCategory> = {
 
 const STATUS_CLEAR_MS = 4000;
 
-export function App({ report, getHtml }: AppProps): React.JSX.Element {
+export function App({ report, version, getHtml }: AppProps): React.JSX.Element {
   const messages = useMessages();
   const { exit } = useApp();
+  const { stdout } = useStdout();
+  const divider = buildSectionDivider(stdout.columns > 0 ? stdout.columns - 4 : 76);
   const [mode, setMode] = useState<Mode>('list');
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<LicenseCategory | null>(null);
@@ -132,8 +136,12 @@ export function App({ report, getHtml }: AppProps): React.JSX.Element {
 
   return (
     <Box flexDirection="column" paddingX={2} paddingY={1}>
-      <Header project={report.project} scannedAt={report.scannedAt} summary={report.summary} />
-      
+      <Header project={report.project} version={version} scannedAt={report.scannedAt} summary={report.summary} />
+
+      <Box marginTop={1}>
+        <Text color={PALETTE.dim}>{divider}</Text>
+      </Box>
+
       <Box marginTop={1} marginBottom={1}>
         <SummaryBar summary={report.summary} />
       </Box>
@@ -151,14 +159,13 @@ export function App({ report, getHtml }: AppProps): React.JSX.Element {
         {mode === 'export' && <ExportMenu cursor={exportCursor} />}
         {mode === 'detail' && selectedPackage !== undefined && <DetailPane pkg={selectedPackage} />}
         {mode === 'help' && <HelpOverlay />}
-        
-        <Box paddingX={1} marginTop={1} borderStyle="round" borderColor="gray">
-          <Text color="gray">
-            <Text bold color="cyan">{modeLabel}</Text>
-            {activeFilters.length > 0 && mode !== 'filter' && <Text color="yellow">({activeFilters.join(', ')}) </Text>}
-            {status.length > 0 ? <Text color="green">{status} </Text> : messages.footer}
-          </Text>
-        </Box>
+
+        <Text color={PALETTE.dim}>{divider}</Text>
+        <Text color={PALETTE.dim}>
+          <Text bold color={PALETTE.brand}>{modeLabel}</Text>
+          {activeFilters.length > 0 && mode !== 'filter' && <Text color={PALETTE.ok}>({activeFilters.join(', ')}) </Text>}
+          {status.length > 0 ? <Text color={PALETTE.good}>{status} </Text> : messages.footer}
+        </Text>
       </Box>
     </Box>
   );

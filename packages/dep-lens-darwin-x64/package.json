@@ -1,11 +1,14 @@
 {
-  "name": "dep-lens-darwin-x64",
+  "name": "@lunanoir/dep-lens-darwin-x64",
   "version": "0.1.0",
   "description": "dep-lens native scanner binary for macOS x64",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dep-lens/dep-lens.git"
+    "url": "git+https://github.com/lunanoir21/dep-lens.git"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "os": [
     "darwin"

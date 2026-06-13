@@ -14,9 +14,16 @@ test('defaults', () => {
     path: '.',
     ignore: [],
     locale: 'en',
+    localeExplicit: false,
     help: false,
     version: false,
+    test: false,
   });
+});
+
+test('--test sets the self-check flag', () => {
+  assert.equal(parseArgs(['--test']).test, true);
+  assert.equal(parseArgs([]).test, false);
 });
 
 test('--tr switches the TUI locale to Turkish', () => {
