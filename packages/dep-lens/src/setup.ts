@@ -1,13 +1,12 @@
-#!/usr/bin/env node
 /**
- * Postinstall setup wizard. Runs once after `npm install`, detects the
- * caller's project ecosystems, asks for a default UI language, and checks
- * whether the global npm bin directory (where the `dep-lens` launcher
- * lands) is on PATH.
+ * Interactive setup wizard. Detects the project's ecosystems, asks for a
+ * default UI language, and checks whether the global npm bin directory
+ * (where the `dep-lens` launcher lands) is on PATH.
  *
- * Skips entirely in non-interactive environments (CI, piped installs, or
- * when npm doesn't attach a TTY to lifecycle scripts) so it never blocks an
- * install.
+ * Runs automatically the first time `dep-lens` is invoked (not as an npm
+ * `postinstall` script - npm 11's install-script policy and the lack of a
+ * TTY on lifecycle scripts make that unreliable), and any time via
+ * `dep-lens --setup`.
  */
 import { execFile } from 'node:child_process';
 import { createInterface } from 'node:readline';
@@ -79,13 +78,11 @@ function pathContains(dir: string): boolean {
  * Run the setup wizard. `force` skips the TTY/CI checks (used by
  * `dep-lens --setup`, where the user explicitly asked for it).
  */
-export async function main(force = false): Promise<void> {
-  // Always print a one-line banner so even non-interactive installs show
-  // something useful, but never prompt unless we have a real TTY.
-  const cwd = process.env['INIT_CWD'] ?? process.cwd();
+export async function runWizard(force = false): Promise<void> {
+  const cwd = process.cwd();
   const detected = detectEcosystems(cwd);
 
-  process.stdout.write(`\n${bold(brand('dep-lens'))} installed.\n`);
+  process.stdout.write(`\n${bold(brand('dep-lens'))} setup\n`);
 
   if (detected.length > 0) {
     const labels = detected.map((eco) => eco.label).join(', ');
@@ -93,7 +90,7 @@ export async function main(force = false): Promise<void> {
   }
 
   if (!force && !isInteractive()) {
-    process.stdout.write(`${dim('run')} dep-lens ${dim('to scan, or')} dep-lens --help\n\n`);
+    process.stdout.write(`${dim('run')} dep-lens --setup ${dim('for language and PATH setup.')}\n\n`);
     return;
   }
 
@@ -155,17 +152,29 @@ async function appendToShellProfile(binDir: string): Promise<void> {
       process.stdout.write(`${dim('already present in')} ${rcFile}\n`);
       return;
     }
-    await appendFile(rcFile, `\n# added by dep-lens postinstall\n${line}\n`);
+    await appendFile(rcFile, `\n# added by dep-lens setup\n${line}\n`);
     process.stdout.write(`${good('added to')} ${rcFile}${dim(' - open a new terminal to apply.')}\n`);
   } catch {
     process.stdout.write(`${dim('could not update shell profile, add manually:')} ${line}\n`);
   }
 }
 
-// Only auto-run when invoked directly as the postinstall script, not when
-// imported by `dep-lens --setup`.
-if (process.argv[1]?.endsWith('postinstall.js')) {
-  main().catch(() => {
-    // Never fail the install over the setup wizard.
-  });
+/**
+ * Run the wizard once, the first time `dep-lens` is ever invoked. No-op on
+ * every later run (tracked via `setupDone` in the user config).
+ */
+export async function runFirstRunSetup(): Promise<void> {
+  // Avoid writing wizard banners into piped/redirected output (e.g.
+  // `dep-lens --json | jq`), where stdout isn't a terminal at all.
+  if (process.stdout.isTTY !== true) {
+    return;
+  }
+  const config = await readConfig();
+  if (config.setupDone === true) {
+    return;
+  }
+  await runWizard(false);
+  const finalConfig = await readConfig();
+  finalConfig.setupDone = true;
+  await writeConfig(finalConfig);
 }

@@ -107,21 +107,15 @@ dep-lens --setup
 
 ### Setup wizard, `--setup`, and `--test`
 
-Right after `npm install`, dep-lens runs a short setup wizard. npm doesn't
-attach a terminal to install scripts, so this first run only detects your
-project's ecosystems and prints a one-line tip - it can't ask questions yet.
-Run `dep-lens --setup` afterwards (in a real terminal) to get the full
-interactive wizard: pick a default UI language (saved to
-`~/.config/dep-lens/config.json`) and check/add the npm global bin directory
-to your shell's `PATH`.
+The first time you run `dep-lens` (any form - TUI, `--json`, `--test`, ...),
+it runs a short setup wizard once: it lists the ecosystems it detects in your
+project, lets you pick a default UI language (saved to
+`~/.config/dep-lens/config.json`), and offers to add the npm global bin
+directory to your shell's `PATH` if it's missing. This happens on first use
+rather than during `npm install` so it gets a real terminal to ask questions
+in - run it again any time with `dep-lens --setup`.
 
-> **npm 11+:** the `postinstall` script may be blocked by npm's install-script
-> policy with a warning like `1 package has install scripts not yet covered by
-> allowScripts`. Run `npm approve-scripts @lunanoir/dep-lens` (or reinstall
-> with `--allow-scripts="@lunanoir/dep-lens"`) to allow it - or just skip that
-> and run `dep-lens --setup` yourself.
-
-`dep-lens --test` re-runs those checks any time: it confirms the native
+`dep-lens --test` is a separate, repeatable self-check: it confirms the native
 binary runs, performs a scan, and reports per-ecosystem whether manifests it
 found actually produced packages - useful for verifying an install or a CI
 environment.

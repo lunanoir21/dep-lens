@@ -6,6 +6,7 @@ import type { Locale } from './i18n.js';
 
 export interface DepLensConfig {
   locale?: Locale;
+  setupDone?: boolean;
 }
 
 function configDir(): string {
@@ -30,6 +31,9 @@ export async function readConfig(): Promise<DepLensConfig> {
     const config: DepLensConfig = {};
     if (record['locale'] === 'en' || record['locale'] === 'tr') {
       config.locale = record['locale'];
+    }
+    if (typeof record['setupDone'] === 'boolean') {
+      config.setupDone = record['setupDone'];
     }
     return config;
   } catch {
