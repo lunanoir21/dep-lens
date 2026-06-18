@@ -1,0 +1,1777 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<meta name="theme-color" content="#020308" />
+<title>dep-lens — Bağımlılıklarını netleştir</title>
+<meta name="description" content="9 ekosistemde üçüncü parti bağımlılıklarını tara, her lisansı sınıflandır, ticari kullanım riskini puanla, sonuçları hızlı ve renkli bir terminal arayüzünde gez." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2302060d'/%3E%3Cpath d='M9 11l-3 5 3 5M23 11l3 5-3 5M14 22l4-12' stroke='%2310b981' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+body {
+  margin: 0;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-feature-settings: "cv02","cv03","cv04","cv11","ss01";
+  background: #020308;
+  color: #e2e8f0;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+img, svg { display: block; max-width: 100%; }
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: pointer; }
+::selection { background: rgba(16,185,129,0.32); color: #fff; }
+
+:root {
+  --bg: #020308;
+  --bg-elev: #060912;
+  --bg-card: rgba(255,255,255,0.022);
+  --bg-card-hover: rgba(255,255,255,0.04);
+  --border: rgba(148,163,184,0.10);
+  --border-strong: rgba(148,163,184,0.20);
+  --text: #e2e8f0;
+  --text-2: #94a3b8;
+  --text-3: #64748b;
+  --emerald: #10b981;
+  --emerald-soft: rgba(16,185,129,0.14);
+  --amber: #f59e0b;
+  --amber-soft: rgba(245,158,11,0.14);
+  --rose: #f43f5e;
+  --rose-soft: rgba(244,63,94,0.14);
+  --slate: #64748b;
+  --slate-soft: rgba(100,116,139,0.18);
+  --cyan: #06b6d4;
+  --violet: #8b5cf6;
+  --radius: 14px;
+  --radius-lg: 22px;
+  --maxw: 1200px;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* ============================================================
+   AMBIENT BACKGROUND
+   ============================================================ */
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(900px 600px at 12% -10%, rgba(16,185,129,0.06), transparent 60%),
+    radial-gradient(800px 600px at 95% 5%, rgba(6,182,212,0.06), transparent 60%),
+    radial-gradient(700px 500px at 60% 110%, rgba(139,92,246,0.05), transparent 60%),
+    linear-gradient(180deg, #020308 0%, #010204 100%);
+}
+.ambient::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(148,163,184,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148,163,184,0.03) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 30%, transparent 80%);
+}
+.ambient .orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.28;
+  animation: float 18s ease-in-out infinite alternate;
+}
+.ambient .orb.o1 { width: 360px; height: 360px; left: -80px; top: 10%; background: #10b981; }
+.ambient .orb.o2 { width: 300px; height: 300px; right: -60px; top: 30%; background: #06b6d4; animation-delay: -6s; }
+.ambient .orb.o3 { width: 260px; height: 260px; left: 40%; bottom: 5%; background: #8b5cf6; animation-delay: -12s; }
+@keyframes float {
+  0%   { transform: translate(0,0) scale(1); }
+  50%  { transform: translate(40px,-30px) scale(1.08); }
+  100% { transform: translate(-30px,20px) scale(0.96); }
+}
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+.wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+section { position: relative; padding: 100px 0; }
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--emerald);
+  padding: 6px 12px;
+  border: 1px solid rgba(16,185,129,0.28);
+  background: rgba(16,185,129,0.07);
+  border-radius: 999px;
+  margin-bottom: 18px;
+}
+.eyebrow::before {
+  content: "";
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--emerald);
+  box-shadow: 0 0 10px var(--emerald);
+}
+.h2 {
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.08;
+  margin: 0 0 14px;
+}
+.h2 .accent {
+  background: linear-gradient(120deg, #10b981 0%, #06b6d4 60%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.lede {
+  font-size: 17px;
+  color: var(--text-2);
+  max-width: 640px;
+  margin: 0;
+}
+.section-head { margin-bottom: 56px; }
+.section-head.center { text-align: center; }
+.section-head.center .lede { margin: 0 auto; }
+
+/* ============================================================
+   NAV
+   ============================================================ */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  background: rgba(2,3,8,0.75);
+  border-bottom: 1px solid var(--border);
+  transition: background 0.3s ease;
+}
+.nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  gap: 24px;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -0.02em;
+}
+.brand-mark {
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  background: linear-gradient(140deg, #050810, #0a0e18);
+  border: 1px solid var(--border-strong);
+  display: grid; place-items: center;
+  box-shadow: 0 0 0 1px rgba(16,185,129,0.06), 0 6px 14px rgba(0,0,0,0.7);
+}
+.brand-mark svg { width: 16px; height: 16px; }
+.brand .ver {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-3);
+  padding: 2px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  margin-left: 4px;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  font-size: 14px;
+  color: var(--text-2);
+}
+.nav-links a { transition: color .2s ease; }
+.nav-links a:hover { color: var(--text); }
+.nav-cta { display: inline-flex; gap: 10px; align-items: center; }
+.nav-cta .gh {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  background: rgba(255,255,255,0.02);
+  transition: all .2s ease;
+}
+.nav-cta .gh:hover { background: rgba(255,255,255,0.06); border-color: rgba(148,163,184,0.4); }
+.nav-cta .gh svg { width: 16px; height: 16px; }
+.menu-btn { display: none; background: transparent; border: 1px solid var(--border-strong); color: var(--text); padding: 8px 10px; border-radius: 10px; }
+@media (max-width: 860px) {
+  .nav-links { display: none; }
+  .nav-cta .gh span { display: none; }
+  .menu-btn { display: inline-flex; }
+}
+
+/* ============================================================
+   HERO
+   ============================================================ */
+.hero { padding-top: 80px; padding-bottom: 60px; }
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 56px;
+  align-items: center;
+}
+@media (max-width: 980px) {
+  .hero-grid { grid-template-columns: 1fr; gap: 40px; }
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 6px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--text-2);
+  margin-bottom: 26px;
+}
+.hero-badge .tag {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: linear-gradient(120deg, var(--emerald), var(--cyan));
+  color: #062414;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+}
+.hero h1 {
+  font-size: clamp(40px, 6.4vw, 78px);
+  font-weight: 900;
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+  margin: 0 0 22px;
+}
+.hero h1 .line { display: block; }
+.hero h1 .grad {
+  background: linear-gradient(110deg, #10b981 0%, #2dd4bf 30%, #06b6d4 60%, #8b5cf6 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.hero h1 .stroke {
+  -webkit-text-stroke: 1.4px rgba(226,232,240,0.85);
+  color: transparent;
+}
+.hero p.sub {
+  font-size: 18px;
+  color: var(--text-2);
+  max-width: 540px;
+  margin: 0 0 32px;
+}
+.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 22px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 15px;
+  border: 1px solid transparent;
+  transition: transform .15s ease, box-shadow .25s ease, background .2s ease, border-color .2s ease;
+  white-space: nowrap;
+}
+.btn:active { transform: translateY(1px); }
+.btn-primary {
+  background: linear-gradient(120deg, #10b981, #06b6d4);
+  color: #062414;
+  box-shadow: 0 8px 28px -8px rgba(16,185,129,0.55), inset 0 1px 0 rgba(255,255,255,0.3);
+}
+.btn-primary:hover { box-shadow: 0 12px 36px -8px rgba(16,185,129,0.75), inset 0 1px 0 rgba(255,255,255,0.3); transform: translateY(-1px); }
+.btn-ghost {
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.btn-ghost:hover { background: rgba(255,255,255,0.08); }
+.btn svg { width: 16px; height: 16px; }
+
+.install-card {
+  margin-top: 30px;
+  background: rgba(4,6,14,0.8);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 460px;
+  font-family: var(--mono);
+  font-size: 13.5px;
+}
+.install-card .prompt { color: var(--emerald); user-select: none; }
+.install-card code { color: var(--text); flex: 1; overflow: auto; white-space: nowrap; }
+.install-card .copy {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--text-2);
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: var(--mono);
+  transition: all .2s ease;
+}
+.install-card .copy:hover { color: var(--text); border-color: rgba(148,163,184,0.5); }
+.install-card .copy.copied { color: var(--emerald); border-color: var(--emerald); }
+
+/* ============================================================
+   TERMINAL DEMO
+   ============================================================ */
+.term-wrap { position: relative; }
+.term-glow {
+  position: absolute;
+  inset: -30px;
+  background: radial-gradient(ellipse 70% 50% at 50% 50%, rgba(16,185,129,0.18), transparent 70%);
+  filter: blur(20px);
+  z-index: -1;
+  pointer-events: none;
+}
+.term {
+  background: linear-gradient(180deg, #050810 0%, #020308 100%);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px -20px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.02) inset;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.term-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  background: rgba(255,255,255,0.025);
+  border-bottom: 1px solid var(--border);
+}
+.term-dots { display: flex; gap: 7px; }
+.term-dots span { width: 11px; height: 11px; border-radius: 50%; }
+.term-dots span:nth-child(1) { background: #f43f5e; }
+.term-dots span:nth-child(2) { background: #f59e0b; }
+.term-dots span:nth-child(3) { background: #10b981; }
+.term-title {
+  flex: 1;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-3);
+  letter-spacing: 0.04em;
+}
+.term-body {
+  padding: 18px 18px 22px;
+  color: #cbd5e1;
+  overflow: auto;
+}
+.term-line { white-space: pre; }
+.term-line .cmd { color: var(--emerald); }
+.term-line .arg { color: #cbd5e1; }
+.term-line .flag { color: var(--cyan); }
+.term-line .dim { color: var(--text-3); }
+.term-line .ok { color: var(--emerald); }
+.term-line .warn { color: var(--amber); }
+.term-line .err { color: var(--rose); }
+.term-line .uk { color: var(--slate); }
+
+.term-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px dashed rgba(148,163,184,0.15);
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+.term-header .score-block { display: flex; align-items: center; gap: 10px; }
+.term-header .face {
+  font-size: 18px;
+  color: var(--emerald);
+  font-weight: 700;
+}
+.term-header .score {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--emerald);
+}
+.term-header .meta {
+  font-size: 11px;
+  color: var(--text-3);
+  text-align: right;
+}
+.score-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.05);
+  overflow: hidden;
+  margin: 10px 0 14px;
+  position: relative;
+}
+.score-bar > div {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--emerald), #2dd4bf);
+  border-radius: 4px;
+  transition: width 1.6s cubic-bezier(.2,.8,.2,1);
+}
+.summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.summary .cell {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.02);
+}
+.summary .cell .num { font-size: 16px; font-weight: 700; }
+.summary .cell .lbl { font-size: 10px; color: var(--text-3); letter-spacing: 0.04em; text-transform: uppercase; }
+.summary .cell.perm .num { color: var(--emerald); }
+.summary .cell.weak .num { color: var(--amber); }
+.summary .cell.strong .num { color: var(--rose); }
+.summary .cell.uk .num { color: var(--slate); }
+
+.ratio-bar {
+  display: flex;
+  height: 14px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  font-family: var(--mono);
+  font-size: 10px;
+}
+.ratio-bar > span { display: flex; align-items: center; justify-content: center; overflow: hidden; transition: width 1.4s cubic-bezier(.2,.8,.2,1); }
+.ratio-bar .r-perm { background: rgba(16,185,129,0.28); color: #6ee7b7; }
+.ratio-bar .r-weak { background: rgba(245,158,11,0.28); color: #fcd34d; }
+.ratio-bar .r-strong { background: rgba(244,63,94,0.28); color: #fda4af; }
+.ratio-bar .r-uk { background: rgba(100,116,139,0.28); color: #cbd5e1; }
+
+.term-table { width: 100%; border-collapse: collapse; }
+.term-table th, .term-table td {
+  text-align: left;
+  padding: 7px 10px;
+  font-size: 12px;
+  border-bottom: 1px solid rgba(148,163,184,0.07);
+}
+.term-table th {
+  color: var(--text-3);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 10px;
+  border-bottom: 1px solid rgba(148,163,184,0.15);
+}
+.term-table td.name { color: #e2e8f0; font-weight: 500; }
+.term-table td.ver { color: var(--text-3); }
+.term-table .badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.badge.perm { background: var(--emerald-soft); color: #6ee7b7; }
+.badge.weak { background: var(--amber-soft); color: #fcd34d; }
+.badge.strong { background: var(--rose-soft); color: #fda4af; }
+.badge.uk { background: var(--slate-soft); color: #cbd5e1; }
+.term-table .risk { font-weight: 600; }
+
+.term-cursor::after {
+  content: "▋";
+  color: var(--emerald);
+  animation: blink 1s steps(1) infinite;
+  margin-left: 2px;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ============================================================
+   STATS STRIP
+   ============================================================ */
+.stats-strip {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.015);
+  padding: 36px 0;
+  margin: 80px 0 0;
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+@media (max-width: 720px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+.stat { text-align: center; }
+.stat .n {
+  font-size: clamp(34px, 5vw, 52px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  background: linear-gradient(120deg, #e2e8f0, #94a3b8);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  line-height: 1;
+}
+.stat .l {
+  font-size: 13px;
+  color: var(--text-2);
+  margin-top: 8px;
+  letter-spacing: 0.02em;
+}
+.stat .n .unit { font-size: 0.6em; color: var(--text-3); margin-left: 4px; -webkit-text-fill-color: var(--text-3); }
+
+/* ============================================================
+   FEATURES
+   ============================================================ */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+@media (max-width: 980px) { .features-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) { .features-grid { grid-template-columns: 1fr; } }
+.feature {
+  position: relative;
+  padding: 26px 24px 28px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  transition: transform .25s ease, border-color .25s ease, background .25s ease;
+  overflow: hidden;
+}
+.feature::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(220px 120px at var(--mx,50%) 0%, rgba(16,185,129,0.10), transparent 70%);
+  opacity: 0;
+  transition: opacity .3s ease;
+  pointer-events: none;
+}
+.feature:hover { transform: translateY(-3px); border-color: var(--border-strong); background: var(--bg-card-hover); }
+.feature:hover::before { opacity: 1; }
+.feature .ico {
+  width: 42px; height: 42px;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  background: linear-gradient(140deg, rgba(16,185,129,0.18), rgba(6,182,212,0.18));
+  border: 1px solid rgba(16,185,129,0.25);
+  color: var(--emerald);
+  margin-bottom: 18px;
+}
+.feature .ico svg { width: 20px; height: 20px; }
+.feature h3 { font-size: 18px; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.01em; }
+.feature p { font-size: 14px; color: var(--text-2); margin: 0; }
+.feature .pill {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  margin-top: 14px;
+  letter-spacing: 0.04em;
+}
+
+/* ============================================================
+   ECOSYSTEMS
+   ============================================================ */
+.eco-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+@media (max-width: 980px) { .eco-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) { .eco-grid { grid-template-columns: 1fr; } }
+.eco {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: all .25s ease;
+}
+.eco:hover { border-color: var(--border-strong); background: var(--bg-card-hover); transform: translateX(2px); }
+.eco-logo {
+  width: 42px; height: 42px;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+.eco:hover .eco-logo { transform: scale(1.06); box-shadow: 0 6px 18px -6px rgba(0,0,0,0.6); }
+.eco-logo svg { width: 26px; height: 26px; }
+.eco h4 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+.eco p { margin: 0; font-size: 12.5px; color: var(--text-2); font-family: var(--mono); line-height: 1.4; }
+.eco .src { font-size: 11px; color: var(--text-3); margin-top: 6px; display: block; }
+
+/* ============================================================
+   LICENSE CLASSIFICATION
+   ============================================================ */
+.lic-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+@media (max-width: 980px) { .lic-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .lic-grid { grid-template-columns: 1fr; } }
+.lic-card {
+  position: relative;
+  padding: 24px 22px 22px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  transition: transform .25s ease;
+}
+.lic-card:hover { transform: translateY(-2px); }
+.lic-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+}
+.lic-card.perm::before { background: var(--emerald); }
+.lic-card.weak::before { background: var(--amber); }
+.lic-card.strong::before { background: var(--rose); }
+.lic-card.uk::before { background: var(--slate); }
+.lic-card .cat {
+  font-size: 11px;
+  font-family: var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.lic-card.perm .cat { color: var(--emerald); }
+.lic-card.weak .cat { color: var(--amber); }
+.lic-card.strong .cat { color: var(--rose); }
+.lic-card.uk .cat { color: var(--slate); }
+.lic-card h4 {
+  font-size: 18px;
+  margin: 6px 0 12px;
+  font-weight: 700;
+}
+.lic-card .risk {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.lic-card .risk .v {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.lic-card.perm .risk .v { color: var(--emerald); }
+.lic-card.weak .risk .v { color: var(--amber); }
+.lic-card.strong .risk .v { color: var(--rose); }
+.lic-card.uk .risk .v { color: var(--slate); }
+.lic-card .risk .lbl { font-size: 12px; color: var(--text-3); }
+.lic-card .comm {
+  font-size: 12px;
+  color: var(--text-2);
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: inline-block;
+  margin-bottom: 14px;
+  font-family: var(--mono);
+}
+.lic-card ul { margin: 0; padding-left: 18px; font-size: 12.5px; color: var(--text-2); }
+.lic-card ul li { margin-bottom: 4px; }
+.lic-card ul li code { font-family: var(--mono); font-size: 11.5px; color: var(--text); background: rgba(255,255,255,0.04); padding: 1px 5px; border-radius: 4px; }
+
+/* ============================================================
+   USAGE TABS
+   ============================================================ */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 18px;
+  padding: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: fit-content;
+  max-width: 100%;
+  overflow: auto;
+}
+.tab {
+  background: transparent;
+  border: 0;
+  color: var(--text-2);
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  font-family: var(--mono);
+  transition: all .2s ease;
+  white-space: nowrap;
+}
+.tab:hover { color: var(--text); }
+.tab.active {
+  background: linear-gradient(120deg, rgba(16,185,129,0.18), rgba(6,182,212,0.18));
+  color: var(--text);
+  box-shadow: 0 0 0 1px rgba(16,185,129,0.3) inset;
+}
+.tab-panels {
+  background: rgba(4,6,14,0.7);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.tab-panel { display: none; padding: 0; }
+.tab-panel.active { display: block; }
+.tab-panel .panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.015);
+}
+.tab-panel .panel-head .ttl { font-size: 12px; color: var(--text-3); font-family: var(--mono); }
+.tab-panel .panel-head .copy2 {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--text-2);
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: var(--mono);
+  transition: all .2s ease;
+}
+.tab-panel .panel-head .copy2:hover { color: var(--text); border-color: rgba(148,163,184,0.5); }
+.tab-panel pre {
+  margin: 0;
+  padding: 20px 22px;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: #cbd5e1;
+  overflow: auto;
+}
+.tab-panel pre .c { color: var(--text-3); }
+.tab-panel pre .k { color: #c4b5fd; }
+.tab-panel pre .s { color: #6ee7b7; }
+.tab-panel pre .n { color: #fcd34d; }
+.tab-panel pre .p { color: var(--cyan); }
+.tab-panel pre .f { color: #93c5fd; }
+
+/* ============================================================
+   CI SECTION
+   ============================================================ */
+.ci-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: center;
+}
+@media (max-width: 980px) { .ci-grid { grid-template-columns: 1fr; } }
+.ci-list { display: flex; flex-direction: column; gap: 14px; }
+.ci-item { display: flex; gap: 14px; align-items: flex-start; }
+.ci-item .n {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  display: grid; place-items: center;
+  background: rgba(16,185,129,0.1);
+  border: 1px solid rgba(16,185,129,0.3);
+  color: var(--emerald);
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.ci-item h4 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+.ci-item p { margin: 0; font-size: 13.5px; color: var(--text-2); }
+
+.code-block {
+  background: rgba(4,6,14,0.7);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.code-block .head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-3);
+}
+.code-block .head .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--emerald); box-shadow: 0 0 8px var(--emerald); }
+.code-block pre { margin: 0; padding: 18px 20px; font-family: var(--mono); font-size: 13px; color: #cbd5e1; overflow: auto; line-height: 1.7; }
+.code-block pre .c { color: var(--text-3); }
+.code-block pre .k { color: #c4b5fd; }
+.code-block pre .s { color: #6ee7b7; }
+.code-block pre .p { color: var(--cyan); }
+
+/* ============================================================
+   TUI KEYS
+   ============================================================ */
+.keys-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+@media (max-width: 640px) { .keys-grid { grid-template-columns: 1fr; } }
+.key-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: all .2s ease;
+}
+.key-row:hover { background: var(--bg-card-hover); border-color: var(--border-strong); }
+.key {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06);
+  color: var(--text);
+  min-width: 56px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.key-row .desc { font-size: 13.5px; color: var(--text-2); }
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 60px 0 40px;
+  margin-top: 80px;
+  background: rgba(255,255,255,0.01);
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 40px;
+  margin-bottom: 40px;
+}
+@media (max-width: 780px) { .footer-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 480px) { .footer-grid { grid-template-columns: 1fr; } }
+.footer-brand p { color: var(--text-2); font-size: 14px; margin: 14px 0 0; max-width: 280px; }
+.footer-col h5 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-3); margin: 0 0 14px; font-weight: 600; }
+.footer-col a { display: block; color: var(--text-2); font-size: 14px; padding: 5px 0; transition: color .2s ease; }
+.footer-col a:hover { color: var(--text); }
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.footer-bottom p { font-size: 13px; color: var(--text-3); margin: 0; font-family: var(--mono); }
+.footer-bottom .badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.footer-bottom .badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 4px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-2);
+}
+
+/* ============================================================
+   REVEAL ANIMATION
+   ============================================================ */
+.reveal { opacity: 0; transform: translateY(20px); transition: opacity .7s ease, transform .7s ease; }
+.reveal.in { opacity: 1; transform: translateY(0); }
+.reveal.d1 { transition-delay: .08s; }
+.reveal.d2 { transition-delay: .16s; }
+.reveal.d3 { transition-delay: .24s; }
+.reveal.d4 { transition-delay: .32s; }
+.reveal.d5 { transition-delay: .4s; }
+.reveal.d6 { transition-delay: .48s; }
+.reveal.d7 { transition-delay: .56s; }
+.reveal.d8 { transition-delay: .64s; }
+</style>
+</head>
+<body>
+
+<div class="ambient" aria-hidden="true">
+  <div class="orb o1"></div>
+  <div class="orb o2"></div>
+  <div class="orb o3"></div>
+</div>
+
+<!-- ================= NAV ================= -->
+<nav class="nav">
+  <div class="wrap nav-inner">
+    <a href="#top" class="brand">
+      <span class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:#10b981">
+          <path d="M7 8l-2.5 4 2.5 4M17 8l2.5 4-2.5 4M11 16l2-8"/>
+        </svg>
+      </span>
+      dep-lens<span class="ver">v0.2</span>
+    </a>
+    <div class="nav-links">
+      <a href="#features">Özellikler</a>
+      <a href="#ecosystems">Ekosistemler</a>
+      <a href="#licenses">Lisanslar</a>
+      <a href="#usage">Kullanım</a>
+      <a href="#ci">CI/CD</a>
+      <a href="#tui">TUI</a>
+    </div>
+    <div class="nav-cta">
+      <a class="gh" href="https://www.npmjs.com/package/@lunanoir/dep-lens" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l9 5v10l-9 5-9-5V7l9-5zm0 2.3L5 8.2v7.6l7 3.9 7-3.9V8.2l-7-3.9z"/></svg>
+        <span>npm</span>
+      </a>
+      <a class="gh" href="https://github.com/lunanoir21/dep-lens" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.92.58.11.79-.25.79-.56v-2.2c-3.2.7-3.87-1.36-3.87-1.36-.53-1.34-1.29-1.7-1.29-1.7-1.06-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.73 1.27 3.4.97.1-.75.4-1.27.73-1.56-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.06 11.06 0 015.79 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.12 3.05.74.81 1.18 1.84 1.18 3.1 0 4.43-2.69 5.4-5.25 5.69.41.35.77 1.04.77 2.1v3.11c0 .31.21.68.8.56A11.5 11.5 0 0023.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
+        <span>GitHub</span>
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- ================= HERO ================= -->
+<section class="hero" id="top" style="padding-top:60px;">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <div class="hero-badge reveal">
+          <span class="tag">NEW</span>
+          <span>Rust çekirdeği + Ink tabanlı TUI — 9 ekosistem</span>
+        </div>
+        <h1 class="reveal d1">
+          <span class="line">Bağımlılıklarını</span>
+          <span class="line grad">netleştir.</span>
+          <span class="line stroke">sterilize et.</span>
+        </h1>
+        <p class="sub reveal d2">
+          9 ekosistemde üçüncü parti bağımlılıklarını tara, her lisansı sınıflandır
+          (permissive / weak copyleft / strong copyleft / unknown), ticari kullanım riskini puanla,
+          sonuçları hızlı ve renkli bir terminal arayüzünde gez.
+        </p>
+        <div class="hero-actions reveal d3">
+          <a class="btn btn-primary" href="https://github.com/lunanoir21/dep-lens" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.92.58.11.79-.25.79-.56v-2.2c-3.2.7-3.87-1.36-3.87-1.36-.53-1.34-1.29-1.7-1.29-1.7-1.06-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.73 1.27 3.4.97.1-.75.4-1.27.73-1.56-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.06 11.06 0 015.79 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.12 3.05.74.81 1.18 1.84 1.18 3.1 0 4.43-2.69 5.4-5.25 5.69.41.35.77 1.04.77 2.1v3.11c0 .31.21.68.8.56A11.5 11.5 0 0023.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
+            GitHub'da gör
+          </a>
+          <a class="btn btn-ghost" href="#usage">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            Hızlı başlangıç
+          </a>
+        </div>
+        <div class="install-card reveal d4">
+          <span class="prompt">$</span>
+          <code id="installCmd">npm install -g @lunanoir/dep-lens</code>
+          <button class="copy" data-copy="npm install -g @lunanoir/dep-lens">kopyala</button>
+        </div>
+      </div>
+
+      <!-- TERMINAL DEMO -->
+      <div class="term-wrap reveal d3">
+        <div class="term-glow"></div>
+        <div class="term">
+          <div class="term-bar">
+            <div class="term-dots"><span></span><span></span><span></span></div>
+            <div class="term-title">dep-lens — ~/projects/my-app</div>
+            <div style="width:48px"></div>
+          </div>
+          <div class="term-body">
+            <div class="term-line"><span class="cmd">$</span> <span class="arg">dep-lens</span> <span class="flag">--path</span> <span class="arg">.</span></div>
+            <div class="term-line dim">scanning 9 ecosystems · 31 packages found</div>
+            <div class="term-line dim">────────────────────────────────────────────</div>
+
+            <div class="term-header">
+              <div class="score-block">
+                <span class="face">◉‿◉</span>
+                <span class="score" id="tScore">84</span>
+                <span class="dim">/ 100 health</span>
+              </div>
+              <div class="meta">
+                dep-lens-core 0.1.0<br/>
+                1.2s · 31 pkg
+              </div>
+            </div>
+            <div class="score-bar"><div id="tBar"></div></div>
+
+            <div class="summary">
+              <div class="cell perm"><div class="num" data-count="22">0</div><div class="lbl">Permissive</div></div>
+              <div class="cell weak"><div class="num" data-count="4">0</div><div class="lbl">Weak</div></div>
+              <div class="cell strong"><div class="num" data-count="2">0</div><div class="lbl">Strong</div></div>
+              <div class="cell uk"><div class="num" data-count="3">0</div><div class="lbl">Unknown</div></div>
+            </div>
+
+            <div class="ratio-bar">
+              <span class="r-perm" style="width:0%" data-w="71">###</span>
+              <span class="r-weak" style="width:0%" data-w="13">==</span>
+              <span class="r-strong" style="width:0%" data-w="6">!</span>
+              <span class="r-uk" style="width:0%" data-w="10">?</span>
+            </div>
+
+            <table class="term-table">
+              <thead>
+                <tr><th>Package</th><th>Versiyon</th><th>Lisans</th><th>Kategori</th><th>Risk</th></tr>
+              </thead>
+              <tbody>
+                <tr><td class="name">react</td><td class="ver">18.3.1</td><td>MIT</td><td><span class="badge perm">Permissive</span></td><td class="risk" style="color:var(--emerald)">0</td></tr>
+                <tr><td class="name">express</td><td class="ver">4.19.2</td><td>MIT</td><td><span class="badge perm">Permissive</span></td><td class="risk" style="color:var(--emerald)">0</td></tr>
+                <tr><td class="name">tokio</td><td class="ver">1.38.0</td><td>MIT</td><td><span class="badge perm">Permissive</span></td><td class="risk" style="color:var(--emerald)">0</td></tr>
+                <tr><td class="name">axios</td><td class="ver">1.7.2</td><td>MIT</td><td><span class="badge perm">Permissive</span></td><td class="risk" style="color:var(--emerald)">0</td></tr>
+                <tr><td class="name"> MPL-kit</td><td class="ver">2.4.1</td><td>MPL-2.0</td><td><span class="badge weak">Weak</span></td><td class="risk" style="color:var(--amber)">40</td></tr>
+                <tr><td class="name"> lgpl-lib</td><td class="ver">3.0.0</td><td>LGPL-3.0</td><td><span class="badge weak">Weak</span></td><td class="risk" style="color:var(--amber)">50</td></tr>
+                <tr><td class="name"> gpl-engine</td><td class="ver">3.0.1</td><td>GPL-3.0</td><td><span class="badge strong">Strong</span></td><td class="risk" style="color:var(--rose)">90</td></tr>
+                <tr><td class="name"> agpl-svc</td><td class="ver">1.4.0</td><td>AGPL-3.0</td><td><span class="badge strong">Strong</span></td><td class="risk" style="color:var(--rose)">100</td></tr>
+                <tr><td class="name"> ???-legacy</td><td class="ver">0.9.3</td><td>—</td><td><span class="badge uk">Unknown</span></td><td class="risk" style="color:var(--slate)">60</td></tr>
+              </tbody>
+            </table>
+
+            <div class="term-line dim" style="margin-top:14px">q quit · enter detail · f filter · 1-4 quick filter · e export</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= STATS STRIP ================= -->
+<div class="stats-strip">
+  <div class="wrap">
+    <div class="stats-grid">
+      <div class="stat reveal">
+        <div class="n"><span data-count="9">0</span></div>
+        <div class="l">Ekosistem</div>
+      </div>
+      <div class="stat reveal d1">
+        <div class="n"><span data-count="4">0</span></div>
+        <div class="l">Lisans kategorisi</div>
+      </div>
+      <div class="stat reveal d2">
+        <div class="n"><span data-count="100">0</span><span class="unit">/100</span></div>
+        <div class="l">Risk puanı</div>
+      </div>
+      <div class="stat reveal d3">
+        <div class="n"><span data-count="0">0</span></div>
+        <div class="l">Emoji</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= FEATURES ================= -->
+<section id="features">
+  <div class="wrap">
+    <div class="section-head center reveal">
+      <span class="eyebrow">Özellikler</span>
+      <h2 class="h2">Tek bir komutla <span class="accent">tam görünürlük</span></h2>
+      <p class="lede">dep-lens; Rust hızında tarama, akıllı lisans sınıflandırma, renkli terminal arayüzü ve CI gate'lerini tek bir İkili dosyada birleştirir.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature reveal">
+        <div class="ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+        </div>
+        <h3>9 ekosistem desteği</h3>
+        <p>npm, Cargo, Go, Python, Ruby, PHP, Java, Dart ve C/C++ manifestlerini otomatik keşfeder ve her biri için doğru lisans kaynağını kullanır.</p>
+        <span class="pill">node_modules · cargo metadata · lockfiles</span>
+      </div>
+
+      <div class="feature reveal d1">
+        <div class="ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L3 7v6c0 5 3.5 8 9 9 5.5-1 9-4 9-9V7l-9-5z"/></svg>
+        </div>
+        <h3>Akıllı lisans sınıflandırma</h3>
+        <p>SPDX ifadeleri otomatik katlanır: <code style="font-family:var(--mono);font-size:12px;color:var(--emerald)">MIT OR Apache-2.0</code> en az kısıtlayıcı seçim, <code style="font-family:var(--mono);font-size:12px;color:var(--rose)">MIT AND GPL-2.0</code> en fazla kısıtlayıcı seçim olarak değerlendirilir.</p>
+        <span class="pill">SPDX · -only/-or-later · WITH exceptions</span>
+      </div>
+
+      <div class="feature reveal d2">
+        <div class="ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+        </div>
+        <h3>Ticari risk puanı</h3>
+        <p>Her lisans kategorisine 0-100 arası risk puanı verir. AGPL ve SSPL 100, GPL ailesi 90, MPL/EPL/LGPL 40-55, permissive 0, unknown 60. Karar vermek için saniyeler.</p>
+        <span class="pill">0 · 40-55 · 90-100 · 60</span>
+      </div>
+
+      <div class="feature reveal d3">
+        <div class="ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h12M6 12h6M6 16h10"/></svg>
+        </div>
+        <h3>Etkileşimli TUI</h3>
+        <p>Ink tabanlı arayüz; sağlık skoruyla reaksiyon gösteren "doktor yüzü", sayım animasyonları, oran çubuğu, satır satır açılan tablo, filtre/sırala/dışa aktarma — hepsi saf ASCII, hiç emoji yok.</p>
+        <span class="pill">Ink · truecolor ANSI · ease-out animasyon</span>
+      </div>
+
+      <div class="feature reveal d4">
+        <div class="ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
+        </div>
+        <h3>CI/CD kapıları</h3>
+        <p><code style="font-family:var(--mono);font-size:12px;color:var(--cyan)">--fail-on gpl</code> ile strong copyleft lisansları tespit edildiğinde exit code 1 döner. <code style="font-family:var(--mono);font-size:12px;color:var(--cyan)">--fail-on agpl</code> sadece AGPL için tetiklenir. Pipeline'ınız otomatik kilitlenir.</p>
+        <span class="pill">--fail-on · --json · npx friendly</span>
+      </div>
+
+      <div class="feature reveal d5">
+        <div class="ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg>
+        </div>
+        <h3>Rust çekirdek, Node kabuk</h3>
+        <p>Tarama motoru Rust'ta yazılı; Linux x64, macOS x64/arm64 ve Windows x64 için ön derlenmiş binary'ler npm üzerinden otomatik seçilir. TUI TypeScript + Ink ile terminalde çalışır.</p>
+        <span class="pill">cargo build --release + tsc</span>
+      </div>
+
+      <div class="feature reveal d6">
+        <div class="ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 11-9-9c2.5 0 4.7 1 6.3 2.7"/><path d="M21 4v5h-5"/></svg>
+        </div>
+        <h3>Lockfile gerektirmez</h3>
+        <p>Python'da sadece <code style="font-family:var(--mono);font-size:12px;color:var(--emerald)">pyproject.toml</code> varsa her bağımlılığı versiyon spec'i ile listeler. Java'da <code style="font-family:var(--mono);font-size:12px;color:var(--emerald)">build.gradle</code> üzerinden <code style="font-family:var(--mono);font-size:12px;color:var(--emerald)">group:artifact:version</code> koordinatlarını doğrudan ayrıştırır.</p>
+        <span class="pill">PEP 621 · Poetry · Gradle KTS</span>
+      </div>
+
+      <div class="feature reveal d7">
+        <div class="ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>
+        </div>
+        <h3>HTML & JSON rapor</h3>
+        <p><code style="font-family:var(--mono);font-size:12px;color:var(--cyan)">--json</code> stdout'a ham JSON, <code style="font-family:var(--mono);font-size:12px;color:var(--cyan)">--html report.html</code> bağımsız bir HTML rapor üretir. <code style="font-family:var(--mono);font-size:12px;color:var(--cyan)">licenseSource</code> alanı lisansın nereden geldiğini kaydeder: declared / licenseFile / none.</p>
+        <span class="pill">--json · --html · --ignore</span>
+      </div>
+
+      <div class="feature reveal d8">
+        <div class="ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l6 6M4 14l6-6 2-3M2 5h12M7 2h3"/><path d="M22 22l-5-10-5 10M14 18h6"/></svg>
+        </div>
+        <h3>Tam yerelleştirme</h3>
+        <p>Tüm etiketler, tavsiye metinleri ve durum mesajları Türkçe'ye çevrilmiştir. <code style="font-family:var(--mono);font-size:12px;color:var(--emerald)">--tr</code> bayrağıyla arayüz anında dil değiştirir. Kurulum sihirbazı terminal dilini de algılar.</p>
+        <span class="pill">--tr · ~/.config/dep-lens/config.json</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ECOSYSTEMS ================= -->
+<section id="ecosystems" style="padding-top:60px">
+  <div class="wrap">
+    <div class="section-head center reveal">
+      <span class="eyebrow">Ekosistemler</span>
+      <h2 class="h2">9 ekosistem, <span class="accent">tek tarayıcı</span></h2>
+      <p class="lede">Her ekosistem için doğru manifest, doğru lockfile ve doğru lisans önbelleği kullanılır. Hiçbir konfigürasyon gerekmez.</p>
+    </div>
+
+    <div class="eco-grid">
+      <div class="eco reveal">
+        <div class="eco-logo">
+          <svg viewBox="0 0 24 24" fill="#CB3837"><path d="M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0zM5.13 5.323L13.967 5.322 13.967 8.27 10.71 8.27 10.71 18.678 8.165 18.678 8.165 8.27 5.13 8.27z"/></svg>
+        </div>
+        <div>
+          <h4>npm / yarn / pnpm</h4>
+          <p>package.json + node_modules</p>
+          <span class="src">license alanı → LICENSE dosyası</span>
+        </div>
+      </div>
+      <div class="eco reveal d1">
+        <div class="eco-logo">
+          <svg viewBox="0 0 24 24"><path fill="#FFF" d="M23.8346 11.7033l-1.0073-.6236a13.6268 13.6268 0 00-.0283-.2936l.8656-.8069a.3483.3483 0 00-.1154-.578l-1.1066-.414a8.4832 8.4832 0 00-.087-.2856l.6904-.9587a.3462.3462 0 00-.226-.5446l-1.1664-.1898a9.3424 9.3424 0 00-.1404-.2622l.4892-1.0746a.3437.3437 0 00-.0223-.3297.3491.3491 0 00-.2782-.1702l-1.1833-.0397a6.6402 6.6402 0 00-.1876-.2302l.271-1.155a.3492.3492 0 00-.4138-.4138l-1.155.271a6.6402 6.6402 0 00-.2302-.1876l-.0397-1.1833a.3491.3491 0 00-.1702-.2782.3437.3437 0 00-.3297-.0223l-1.0746.4892a9.3424 9.3424 0 00-.2622-.1404l-.1898-1.1664a.3462.3462 0 00-.5446-.226l-.9587.6904a8.4832 8.4832 0 00-.2856-.087l-.414-1.1066a.3483.3483 0 00-.578-.1154l-.8069.8656a13.6268 13.6268 0 00-.2936-.0283L12.2967.1654a.3491.3491 0 00-.5934 0l-.6236 1.0073a13.6268 13.6268 0 00-.2936.0283l-.8069-.8656a.3483.3483 0 00-.578.1154l-.414 1.1066a8.4832 8.4832 0 00-.2856.087L7.7462.6433a.3462.3462 0 00-.5446.226L7.0118 2.036a9.3424 9.3424 0 00-.2622.1404L5.6751 1.687a.3437.3437 0 00-.3297.0223.3491.3491 0 00-.1702.2782l-.0397 1.1833a6.6402 6.6402 0 00-.2302.1876L3.7504 2.887a.3492.3492 0 00-.4138.4138l.271 1.155a6.6402 6.6402 0 00-.2302.1876L2.3944 4.5439a.3437.3437 0 00-.2782.1702.3491.3491 0 00-.0223.3297l.4892 1.0746a9.3424 9.3424 0 00-.1404.2622L1.2763 6.5701a.3462.3462 0 00-.226.5446l.6904.9587a8.4832 8.4832 0 00-.087.2856L.5467 8.7729a.3483.3483 0 00-.1154.578l.8656.8069a13.6268 13.6268 0 00-.0283.2936l-1.0073.6236a.3491.3491 0 000 .5934l1.0073.6236a13.6268 13.6268 0 00.0283.2936l-.8656.8069a.3483.3483 0 00.1154.578l1.1066.414a8.4832 8.4832 0 00.087.2856l-.6904.9587a.3462.3462 0 00.226.5446l1.1664.1898a9.3424 9.3424 0 00.1404.2622l-.4892 1.0746a.3437.3437 0 00.0223.3297.3491.3491 0 00.2782.1702l1.1833.0397a6.6402 6.6402 0 00.1876.2302l-.271 1.155a.3492.3492 0 00.4138.4138l1.155-.271a6.6402 6.6402 0 00.2302.1876l.0397 1.1833a.3491.3491 0 00.1702.2782.3437.3437 0 00.3297.0223l1.0746-.4892a9.3424 9.3424 0 00.2622.1404l.1898 1.1664a.3462.3462 0 00.5446.226l.9587-.6904a8.4832 8.4832 0 00.2856.087l.414 1.1066a.3483.3483 0 00.578.1154l.8069-.8656a13.6268 13.6268 0 00.2936.0283l.6236 1.0073a.3491.3491 0 00.5934 0l.6236-1.0073a13.6268 13.6268 0 00.2936-.0283l.8069.8656a.3483.3483 0 00.578-.1154l.414-1.1066a8.4832 8.4832 0 00.2856-.087l.9587.6904a.3462.3462 0 00.5446-.226l.1898-1.1664a9.3424 9.3424 0 00.2622-.1404l1.0746.4892a.3437.3437 0 00.3297-.0223.3491.3491 0 00.1702-.2782l.0397-1.1833a6.6402 6.6402 0 00.2302-.1876l1.155.271a.3492.3492 0 00.4138-.4138l-.271-1.155a6.6402 6.6402 0 00.2302-.1876l1.1833-.0397a.3491.3491 0 00.2782-.1702.3437.3437 0 00.0223-.3297l-.4892-1.0746a9.3424 9.3424 0 00.1404-.2622l1.1664-.1898a.3462.3462 0 00.226-.5446l-.6904-.9587a8.4832 8.4832 0 00.087-.2856l1.1066-.414a.3483.3483 0 00.1154-.578l-.8656-.8069a13.6268 13.6268 0 00.0283-.2936l1.0073-.6236a.3491.3491 0 000-.5934z"/><path fill="#000" d="M12 7.5a4.5 4.5 0 100 9 4.5 4.5 0 000-9zm0 1.4a3.1 3.1 0 110 6.2 3.1 3.1 0 010-6.2z"/><path fill="#000" d="M12 4l.4 1.2-1.3-.4.9-.8zm0 0l-.4 1.2 1.3-.4-.9-.8zm0 16l-.4-1.2 1.3.4-.9.8zm0 0l.4-1.2-1.3.4.9.8zM4 12l1.2.4-.4-1.3-.8.9zm0 0l1.2-.4-.4 1.3-.8-.9zm16 0l-1.2-.4.4 1.3.8-.9zm0 0l-1.2.4.4-1.3.8.9z"/></svg>
+        </div>
+        <div>
+          <h4>Cargo (Rust)</h4>
+          <p>Cargo.toml via cargo metadata</p>
+          <span class="src">crate metadata → LICENSE</span>
+        </div>
+      </div>
+      <div class="eco reveal d2">
+        <div class="eco-logo">
+          <svg viewBox="0 0 24 24"><path fill="#00ADD8" d="M1.811 10.231c-.047 0-.058-.023-.035-.059l.246-.315c.023-.035.081-.058.128-.058h4.172c.046 0 .058.035.035.07l-.199.303c-.023.035-.082.07-.117.07zM.047 11.306c-.047 0-.058-.023-.035-.058l.245-.316c.023-.035.082-.058.129-.058h5.328c.047 0 .07.035.058.07l-.093.28c-.012.046-.058.07-.105.07zm2.828 1.075c-.047 0-.058-.035-.035-.07l.163-.292c.023-.035.07-.07.117-.07h2.337c.047 0 .07.035.07.082l-.023.28c0 .046-.047.081-.082.081zm12.093-2.36c-.736.187-1.239.327-1.963.514-.176.046-.187.058-.34-.117-.174-.199-.302-.327-.548-.444-.736-.362-1.45-.257-2.115.175-.795.514-1.204 1.274-1.192 2.22.011.935.654 1.706 1.577 1.835.795.105 1.46-.175 1.998-.795.105-.13.198-.27.315-.434H10.47c-.245 0-.304-.152-.222-.35.152-.362.432-.97.596-1.274a.315.315 0 01.292-.187h4.253c-.023.327-.023.654-.07.981a5.375 5.375 0 01-1.028 2.455c-.901 1.192-2.092 1.93-3.596 2.127-1.239.164-2.39-.082-3.402-.795-.935-.654-1.466-1.531-1.606-2.67-.164-1.321.292-2.502 1.145-3.502.911-1.07 2.127-1.759 3.484-2.01 1.169-.21 2.296-.082 3.309.548.653.41 1.122.97 1.437 1.66.07.105.023.164-.117.187"/></svg>
+        </div>
+        <div>
+          <h4>Go</h4>
+          <p>go.mod</p>
+          <span class="src">$GOPATH/pkg/mod LICENSE</span>
+        </div>
+      </div>
+      <div class="eco reveal d3">
+        <div class="eco-logo">
+          <svg viewBox="0 0 24 24"><linearGradient id="pyg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#387EB8"/><stop offset="1" stop-color="#366994"/></linearGradient><linearGradient id="pyg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE052"/><stop offset="1" stop-color="#FFC331"/></linearGradient><path fill="url(#pyg)" d="M11.914 0c-1.018.024-1.994.184-2.852.484-2.482.86-2.933 2.66-2.933 5.953 0 .847-.066 1.55-.066 2.343 0 2.94 1.455 2.785 2.734 2.785h.012c1.279 0 2.734.155 2.734-2.785 0-1.028-.35-2.143-.35-2.143 0-1.064.86-1.924 1.924-1.924h2.305c2.94 0 2.785-1.455 2.785-2.734 0-3.293-.45-5.093-2.933-5.953C14.408.184 13.432.024 12.414 0h-.5z"/><path fill="url(#pyg2)" transform="translate(0 8)" d="M11.914 0c-1.018.024-1.994.184-2.852.484-2.482.86-2.933 2.66-2.933 5.953 0 .847-.066 1.55-.066 2.343 0 2.94 1.455 2.785 2.734 2.785h.012c1.279 0 2.734.155 2.734-2.785 0-1.028-.35-2.143-.35-2.143 0-1.064.86-1.924 1.924-1.924h2.305c2.94 0 2.785-1.455 2.785-2.734 0-3.293-.45-5.093-2.933-5.953C14.408.184 13.432.024 12.414 0h-.5z"/><path fill="#FFF" d="M12 9.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5z"/></svg>
+        </div>
+        <div>
+          <h4>Python</h4>
+          <p>poetry.lock · uv.lock · Pipfile.lock · requirements.txt · pyproject.toml</p>
+          <span class="src">.venv/venv *.dist-info/METADATA</span>
+        </div>
+      </div>
+      <div class="eco reveal d4">
+        <div class="eco-logo">
+          <svg viewBox="0 0 24 24"><path fill="#CC342D" d="M17.815 9.318c-.42-.876-1.018-1.346-1.786-1.726-.768-.38-1.714-.526-2.838-.526-.84 0-1.62.146-2.34.438-.72.292-1.35.704-1.886 1.236-.537.532-.958 1.176-1.264 1.932-.306.756-.46 1.602-.46 2.538 0 .96.151 1.82.452 2.58.301.76.728 1.408 1.28 1.944.553.536 1.218.948 1.996 1.236.778.288 1.65.432 2.616.432.66 0 1.296-.06 1.908-.18.612-.12 1.176-.288 1.692-.504.18-.072.294-.18.342-.324.048-.144.072-.34.072-.588 0-.18-.012-.336-.036-.468-.024-.132-.06-.24-.108-.324-.048-.084-.108-.126-.18-.126-.072 0-.168.03-.288.09-.12.06-.276.126-.468.198-.192.072-.426.138-.702.198-.276.06-.6.09-.972.09-.708 0-1.314-.108-1.818-.324-.504-.216-.918-.516-1.242-.9-.324-.384-.564-.84-.72-1.368-.156-.528-.234-1.104-.234-1.728 0-1.056.24-1.872.72-2.448.48-.576 1.176-.864 2.088-.864.552 0 1.02.078 1.404.234.384.156.702.348.954.576.252.228.45.48.594.756.144.276.252.534.324.774.072.24.108.468.108.684 0 .336-.042.624-.126.864-.084.24-.18.438-.288.594-.108.156-.222.27-.342.342-.12.072-.222.108-.306.108-.144 0-.258-.042-.342-.126-.084-.084-.126-.21-.126-.378 0-.156.012-.318.036-.486.024-.168.036-.354.036-.558 0-.66-.156-1.176-.468-1.548-.312-.372-.78-.558-1.404-.558-.516 0-.93.162-1.242.486-.312.324-.468.756-.468 1.296 0 .396.09.726.27.99.18.264.42.486.72.664.3.18.648.318 1.044.414.396.096.816.144 1.26.144.72 0 1.356-.114 1.908-.342.552-.228 1.014-.546 1.386-.954.372-.408.654-.888.846-1.44.192-.552.288-1.158.288-1.818 0-.66-.132-1.278-.396-1.854z"/><path fill="#CC342D" d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+        </div>
+        <div>
+          <h4>Ruby</h4>
+          <p>Gemfile.lock</p>
+          <span class="src">gemspec license → LICENSE</span>
+        </div>
+      </div>
+      <div class="eco reveal d5">
+        <div class="eco-logo">
+          <svg viewBox="0 0 24 24"><path fill="#777BB4" d="M7.005 4.014c-.072.024-.144.072-.192.144-.048.072-.072.156-.072.24v3.84c0 .084-.024.156-.072.24-.048.072-.108.132-.18.18-.06.036-.132.06-.216.072H2.4c-.18 0-.324.06-.432.18-.108.12-.18.276-.18.456v3.6c0 .084-.024.156-.072.24-.048.072-.108.132-.18.18-.072.036-.144.06-.216.072-.084 0-.156-.012-.24-.072-.072-.036-.132-.108-.18-.18-.036-.072-.06-.156-.06-.24v-3.6c0-.18-.06-.336-.18-.456-.12-.12-.276-.18-.432-.18H.18c-.084 0-.156-.012-.24-.072-.072-.036-.132-.108-.18-.18-.036-.072-.06-.156-.06-.24 0-.18.06-.336.18-.456.12-.12.276-.18.432-.18h1.8c.18 0 .324-.06.432-.18.108-.12.18-.276.18-.456v-3.84c0-.18.06-.336.18-.456.12-.12.276-.18.432-.18h4.005c.18 0 .336.06.456.18.12.12.18.276.18.456 0 .084-.024.156-.072.24-.048.072-.108.132-.18.18z"/><path fill="#777BB4" d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.16 13.5h-2.4c-.18 0-.324-.06-.432-.18-.108-.12-.18-.276-.18-.456 0-.084.024-.156.072-.24.048-.072.108-.132.18-.18.072-.036.144-.06.216-.072h2.544c.18 0 .324.06.432.18.108.12.18.276.18.456v4.014c0 .084-.024.156-.072.24-.048.072-.108.132-.18.18-.072.036-.156.06-.24.06s-.156-.024-.24-.072c-.072-.048-.132-.108-.18-.18-.036-.084-.06-.156-.06-.24V13.5zm-7.392 4.32H7.728v-7.32h2.04v7.32zm0-8.76H7.728V6.42h2.04v2.64z"/></svg>
+        </div>
+        <div>
+          <h4>PHP</h4>
+          <p>composer.lock</p>
+          <span class="src">composer.json license alanı</span>
+        </div>
+      </div>
+      <div class="eco reveal d6">
+        <div class="eco-logo">
+          <svg viewBox="0 0 24 24"><path fill="#ED8B00" d="M3 3h18v18H3V3zm1.5 1.5v15h15v-15h-15zM8.25 8.25h7.5v1.5h-7.5v-1.5zm0 3h7.5v1.5h-7.5v-1.5zm0 3h4.5v1.5h-4.5v-1.5z"/><path fill="#ED8B00" d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/><path fill="#5382A1" d="M11.55 21.6c-.42-.06-.84-.18-1.23-.34-.39-.16-.78-.36-1.13-.6-.35-.24-.66-.51-.94-.81-.28-.3-.55-.63-.78-.99-.23-.36-.45-.74-.62-1.13-.17-.39-.3-.81-.4-1.23-.1-.42-.18-.84-.21-1.27-.03-.43-.05-.86-.05-1.29 0-.42.04-.85.1-1.27.07-.42.17-.83.3-1.23.13-.4.3-.79.5-1.16.2-.37.43-.72.69-1.05.26-.33.55-.64.86-.92.31-.28.65-.53 1-.75.35-.22.72-.41 1.1-.56.38-.15.78-.27 1.18-.34.4-.07.81-.11 1.22-.11.41 0 .82.04 1.22.11.4.07.8.19 1.18.34.38.15.75.34 1.1.56.35.22.69.47 1 .75.31.28.6.59.86.92.26.33.49.68.69 1.05.2.37.37.76.5 1.16.13.4.23.81.3 1.23.07.42.1.85.1 1.27 0 .43-.02.86-.05 1.29-.03.43-.11.85-.21 1.27-.1.42-.23.84-.4 1.23-.17.39-.39.77-.62 1.13-.23.36-.5.69-.78.99-.28.3-.59.57-.94.81-.35.24-.74.44-1.13.6-.39.16-.81.28-1.23.34z"/></svg>
+        </div>
+        <div>
+          <h4>Java / Gradle / Maven</h4>
+          <p>pom.xml · gradle.lockfile · build.gradle(.kts)</p>
+          <span class="src">~/.m2/repository POM</span>
+        </div>
+      </div>
+      <div class="eco reveal d7">
+        <div class="eco-logo">
+          <svg viewBox="0 0 24 24"><path fill="#0175C2" d="M4.105 4.105v15.79h15.79V4.105H4.105zm.79.79h14.21v14.21H4.895V4.895z"/><path fill="#02569B" d="M4.895 4.895v14.21h14.21V4.895H4.895zm7.105 1.5c2.895 0 5.34 1.92 6.135 4.56l-3.045 1.275c-.39-1.305-1.605-2.265-3.06-2.265-.93 0-1.77.36-2.385.93L7.71 8.55c1.155-1.275 2.79-2.055 4.605-2.055zm-6.39 5.205l3.045 1.275c-.06.27-.09.555-.09.84 0 .285.03.57.09.84l-3.045 1.275c-.135-.69-.21-1.395-.21-2.115s.075-1.425.21-2.115zm12.78 0c.135.69.21 1.395.21 2.115s-.075 1.425-.21 2.115l-3.045-1.275c.06-.27.09-.555.09-.84 0-.285-.03-.57-.09-.84l3.045-1.275zm-6.39 5.205c-1.455 0-2.67-.96-3.06-2.265L7.62 16.41c.615.57 1.455.93 2.385.93 1.455 0 2.67-.96 3.06-2.265l3.045 1.275C15.43 15.79 12.985 17.71 10.09 17.71z"/></svg>
+        </div>
+        <div>
+          <h4>Dart / Flutter</h4>
+          <p>pubspec.lock</p>
+          <span class="src">~/.pub-cache/hosted LICENSE</span>
+        </div>
+      </div>
+      <div class="eco reveal d8">
+        <div class="eco-logo">
+          <svg viewBox="0 0 24 24"><path fill="#00599C" d="M11.99 0C5.476 0 .012 5.464.012 11.978c0 5.294 3.449 9.786 8.226 11.382.6.111.82-.261.82-.581 0-.287-.011-1.049-.016-2.061-3.348.728-4.053-1.614-4.053-1.614-.547-1.39-1.336-1.761-1.336-1.761-1.093-.747.083-.732.083-.732 1.208.085 1.844 1.241 1.844 1.241 1.074 1.841 2.818 1.309 3.504 1.001.108-.779.42-1.31.764-1.611-2.673-.304-5.485-1.336-5.485-5.946 0-1.313.469-2.387 1.241-3.231-.125-.304-.538-1.53.117-3.187 0 0 1.012-.324 3.318 1.234a11.55 11.55 0 013.034-.407c1.029.005 2.066.139 3.034.407 2.305-1.558 3.316-1.234 3.316-1.234.656 1.657.243 2.883.119 3.187.774.844 1.24 1.918 1.24 3.231 0 4.62-2.816 5.639-5.498 5.934.431.372.815 1.103.815 2.223 0 1.606-.014 2.9-.014 3.293 0 .322.217.697.825.579C20.557 21.76 24 17.27 24 11.978 24 5.464 18.536 0 12 0z"/><path fill="#FFF" d="M9.085 17.869c-.027.061-.123.079-.21.037-.089-.04-.139-.123-.11-.184.026-.063.122-.08.211-.039.089.04.14.124.109.186zm.482.534c-.058.054-.171.029-.247-.056-.079-.085-.094-.198-.035-.253.059-.054.169-.029.248.056.079.085.097.198.034.253zm.469.69c-.074.051-.194.003-.269-.104-.074-.107-.074-.236.002-.287.075-.051.193-.005.269.101.074.108.074.237-.002.29zm.789.825c-.066.073-.207.053-.337-.046-.13-.1-.181-.235-.115-.308.066-.073.208-.052.338.046.131.1.183.235.114.308zm.964.115c-.029.094-.164.137-.301.097-.137-.041-.226-.153-.198-.248.028-.095.164-.139.301-.097.137.041.226.152.198.248zm1.033.121c.003.099-.112.181-.255.183-.143.003-.259-.077-.261-.174 0-.1.113-.181.256-.184.143-.003.26.077.26.175zm.972-.069c.017.097-.082.196-.224.222-.139.026-.269-.034-.287-.13-.017-.099.084-.198.223-.223.142-.025.27.034.288.131z"/></svg>
+        </div>
+        <div>
+          <h4>C / C++</h4>
+          <p>vcpkg.json · conanfile.txt</p>
+          <span class="src">vcpkg_installed copyright</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= LICENSES ================= -->
+<section id="licenses">
+  <div class="wrap">
+    <div class="section-head center reveal">
+      <span class="eyebrow">Sınıflandırma</span>
+      <h2 class="h2">Her lisans <span class="accent">tek bir kategoriye</span> indirgenir</h2>
+      <p class="lede">SPDX ifadeleri otomatik katlanır, -only / -or-later sonekleri ve WITH istisna maddeleri normalize edilir. Araç otomatik rapor üretir; hukuki tavsiye değildir.</p>
+    </div>
+
+    <div class="lic-grid">
+      <div class="lic-card perm reveal">
+        <div class="cat">● Permissive</div>
+        <h4>Serbest kullanım</h4>
+        <div class="risk"><span class="v">0</span><span class="lbl">/ 100 risk</span></div>
+        <div class="comm">ticari kullanım: ✓ evet</div>
+        <ul>
+          <li><code>MIT</code></li>
+          <li><code>Apache-2.0</code></li>
+          <li><code>BSD-2/3-Clause</code></li>
+          <li><code>ISC</code> · <code>0BSD</code></li>
+          <li><code>Unlicense</code> · <code>CC0</code></li>
+          <li><code>Zlib</code> · <code>BSL-1.0</code></li>
+          <li><code>Artistic-2.0</code> ...</li>
+        </ul>
+      </div>
+
+      <div class="lic-card weak reveal d1">
+        <div class="cat">● Weak Copyleft</div>
+        <h4>Dosya bazlı copyleft</h4>
+        <div class="risk"><span class="v">40-55</span><span class="lbl">/ 100 risk</span></div>
+        <div class="comm">ticari kullanım: ⚠ dikkat</div>
+        <ul>
+          <li><code>LGPL-2.0/2.1/3.0</code> → 50</li>
+          <li><code>MPL-1.1/2.0</code> → 40</li>
+          <li><code>EPL-1.0/2.0</code> → 45</li>
+          <li><code>CDDL-1.0/1.1</code> → 55</li>
+        </ul>
+      </div>
+
+      <div class="lic-card strong reveal d2">
+        <div class="cat">● Strong Copyleft</div>
+        <h4>Türev eser kısıtlı</h4>
+        <div class="risk"><span class="v">90-100</span><span class="lbl">/ 100 risk</span></div>
+        <div class="comm">ticari kullanım: ⛔ kısıtlı</div>
+        <ul>
+          <li><code>GPL-1.0/2.0/3.0</code> → 90</li>
+          <li><code>AGPL-1.0/3.0</code> → 100</li>
+          <li><code>SSPL-1.0</code> → 100</li>
+          <li><code>EUPL-1.1/1.2</code> · <code>OSL-3.0</code></li>
+        </ul>
+      </div>
+
+      <div class="lic-card uk reveal d3">
+        <div class="cat">● Unknown</div>
+        <h4>İnceleme gerekli</h4>
+        <div class="risk"><span class="v">60</span><span class="lbl">/ 100 risk</span></div>
+        <div class="comm">ticari kullanım: ? incele</div>
+        <ul>
+          <li>Lisans eksik</li>
+          <li>Tanınmayan format</li>
+          <li><code>SEE LICENSE IN ...</code> yer tutucu</li>
+          <li>Conanfile'ta metadata yok</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= USAGE ================= -->
+<section id="usage">
+  <div class="wrap">
+    <div class="section-head center reveal">
+      <span class="eyebrow">Kullanım</span>
+      <h2 class="h2">Tek komutla <span class="accent">çalışmaya başla</span></h2>
+      <p class="lede">İlk çalıştırmada kurulum sihirbazı proje ekosistemlerini listeler, dil seçimi yaptırır ve PATH kontrolü yapar. Tekrar çalıştırmak için <code style="font-family:var(--mono);color:var(--emerald)">dep-lens --setup</code>.</p>
+    </div>
+
+    <div class="reveal" style="max-width:880px;margin:0 auto">
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="tui">TUI</button>
+        <button class="tab" data-tab="json">JSON</button>
+        <button class="tab" data-tab="html">HTML</button>
+        <button class="tab" data-tab="tr">Türkçe</button>
+        <button class="tab" data-tab="ci">CI gate</button>
+        <button class="tab" data-tab="test">Self-test</button>
+      </div>
+
+      <div class="tab-panels">
+        <div class="tab-panel active" data-panel="tui">
+          <div class="panel-head">
+            <span class="ttl">~/projects/my-app · zsh</span>
+            <button class="copy2" data-copy="dep-lens">kopyala</button>
+          </div>
+<pre><span class="c"># Mevcut dizin için etkileşimli TUI</span>
+<span class="k">dep-lens</span>
+
+<span class="c"># Başka bir projeyi tara</span>
+<span class="k">dep-lens</span> <span class="f">--path</span> <span class="s">../my-app</span>
+
+<span class="c"># Hariç tutulacak paketler</span>
+<span class="k">dep-lens</span> <span class="f">--ignore</span> <span class="s">left-pad</span> <span class="f">--ignore</span> <span class="s">internal-pkg-a,internal-pkg-b</span></pre>
+        </div>
+
+        <div class="tab-panel" data-panel="json">
+          <div class="panel-head">
+            <span class="ttl">stdout · JSON</span>
+            <button class="copy2" data-copy="dep-lens --json">kopyala</button>
+          </div>
+<pre><span class="c"># stdout'a ham JSON (TTY değilse varsayılan)</span>
+<span class="k">dep-lens</span> <span class="f">--json</span> <span class="p">|</span> <span class="k">jq</span> <span class="s">'.packages[] | select(.category=="strong")'</span>
+
+<span class="c"># örnek çıktı</span>
+{
+  <span class="s">"name"</span>: <span class="s">"gpl-engine"</span>,
+  <span class="s">"version"</span>: <span class="s">"3.0.1"</span>,
+  <span class="s">"license"</span>: <span class="s">"GPL-3.0-only"</span>,
+  <span class="s">"category"</span>: <span class="s">"strong"</span>,
+  <span class="s">"risk"</span>: <span class="n">90</span>,
+  <span class="s">"licenseSource"</span>: <span class="s">"declared"</span>,
+  <span class="s">"ecosystem"</span>: <span class="s">"npm"</span>
+}</pre>
+        </div>
+
+        <div class="tab-panel" data-panel="html">
+          <div class="panel-head">
+            <span class="ttl">report.html · standalone</span>
+            <button class="copy2" data-copy="dep-lens --html report.html">kopyala</button>
+          </div>
+<pre><span class="c"># Bağımsız HTML rapor üret</span>
+<span class="k">dep-lens</span> <span class="f">--html</span> <span class="s">report.html</span>
+
+<span class="c"># Tüm paketler, renk kodlu kategoriler,</span>
+<span class="c"># kaynak lisans meta-data, JSON'a göre</span>
+<span class="c"># daha gözden geçirilebilir bir çıktı.</span>
+
+<span class="c"># CI artifact olarak yayınla:</span>
+<span class="k">dep-lens</span> <span class="f">--html</span> <span class="s">./artifacts/licenses.html</span></pre>
+        </div>
+
+        <div class="tab-panel" data-panel="tr">
+          <div class="panel-head">
+            <span class="ttl">Türkçe arayüz</span>
+            <button class="copy2" data-copy="dep-lens --tr">kopyala</button>
+          </div>
+<pre><span class="c"># Tüm etiketler, tavsiyeler ve durum mesajları</span>
+<span class="k">dep-lens</span> <span class="f">--tr</span>
+
+<span class="c"># İlk çalıştırmada kurulum sihirbazı dili sorar,</span>
+<span class="c"># seçim ~/.config/dep-lens/config.json'a kaydedilir.</span>
+
+<span class="c"># Sihirbazı tekrar çalıştır:</span>
+<span class="k">dep-lens</span> <span class="f">--setup</span></pre>
+        </div>
+
+        <div class="tab-panel" data-panel="ci">
+          <div class="panel-head">
+            <span class="ttl">exit code 1 · gate</span>
+            <button class="copy2" data-copy="dep-lens --json --fail-on gpl">kopyala</button>
+          </div>
+<pre><span class="c"># Strong copyleft varsa exit 1</span>
+<span class="k">dep-lens</span> <span class="f">--fail-on</span> <span class="s">gpl</span>     <span class="c"># GPL-2.0, GPL-3.0, AGPL-3.0</span>
+
+<span class="c"># Sadece AGPL</span>
+<span class="k">dep-lens</span> <span class="f">--fail-on</span> <span class="s">agpl</span>    <span class="c"># AGPL-3.0 only</span>
+
+<span class="c"># CI'da JSON + gate birlikte</span>
+<span class="k">dep-lens</span> <span class="f">--json</span> <span class="f">--fail-on</span> <span class="s">gpl</span> <span class="p">&gt;</span> report.json</pre>
+        </div>
+
+        <div class="tab-panel" data-panel="test">
+          <div class="panel-head">
+            <span class="ttl">dep-lens --test · self-check</span>
+            <button class="copy2" data-copy="dep-lens --test">kopyala</button>
+          </div>
+<pre><span class="k">dep-lens</span> <span class="f">--test</span> <span class="s">/path/to/project</span>
+
+  <span class="ok">PASS</span>  native scanner binary  dep-lens-core 0.1.0
+  <span class="ok">PASS</span>  scan                   31 package(s) found
+  <span class="ok">PASS</span>  npm / yarn / pnpm      19 package(s)
+  <span class="ok">PASS</span>  Cargo                  3 package(s)
+  <span class="warn">WARN</span>  license coverage       3 package(s) with unknown license
+
+all checks passed</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CI SECTION ================= -->
+<section id="ci" style="padding-top:60px">
+  <div class="wrap">
+    <div class="section-head center reveal">
+      <span class="eyebrow">CI/CD</span>
+      <h2 class="h2">Pipeline'ını <span class="accent">copyleft'e karşı</span> kilitle</h2>
+      <p class="lede">Tek satırlık bir GitHub Actions adımı, projenize GPL/AGPL/SSPL kaçmasını engeller. JSON çıktısını artifact olarak yayınla, HTML raporu ekiplere paylaş.</p>
+    </div>
+
+    <div class="ci-grid">
+      <div class="ci-list">
+        <div class="ci-item reveal">
+          <div class="n">1</div>
+          <div>
+            <h4>npx ile çalıştır, kurulum gerekmez</h4>
+            <p>CI ajanında <code style="font-family:var(--mono);color:var(--emerald);font-size:12px">npm install -g</code> yapmak yerine <code style="font-family:var(--mono);color:var(--cyan);font-size:12px">npx dep-lens</code> çağrısı yeterli. Platform binary'si otomatik çekilir.</p>
+          </div>
+        </div>
+        <div class="ci-item reveal d1">
+          <div class="n">2</div>
+          <div>
+            <h4>--fail-on ile çıkış kodu kontrolü</h4>
+            <p><code style="font-family:var(--mono);color:var(--cyan);font-size:12px">--fail-on gpl</code> strong copyleft tetikler, <code style="font-family:var(--mono);color:var(--cyan);font-size:12px">--fail-on agpl</code> sadece AGPL. Exit code 1 → adım kırmızı → PR engellenir.</p>
+          </div>
+        </div>
+        <div class="ci-item reveal d2">
+          <div class="n">3</div>
+          <div>
+            <h4>JSON ve HTML artifact'leri</h4>
+            <p>JSON'u JQ ile sorgula, HTML raporu tarayıcıda paylaş. <code style="font-family:var(--mono);color:var(--text-2);font-size:12px">licenseSource</code> alanı lisansın declared mı, LICENSE dosyasından mı yoksa hiç yok mu olduğunu kaydeder.</p>
+          </div>
+        </div>
+        <div class="ci-item reveal d3">
+          <div class="n">4</div>
+          <div>
+            <h4>--ignore ile bilinen istisnalar</h4>
+            <p>İç paketler, araştırılmış özel paketler veya metrik dışı bırakılması gereken bağımlılıklar <code style="font-family:var(--mono);color:var(--cyan);font-size:12px">--ignore</code> ile filtrelenir. Virgülle ayrılmış liste veya tekrarlayan bayrak kabul eder.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="code-block reveal d2">
+        <div class="head">
+          <span class="dot"></span>
+          .github/workflows/license-gate.yml
+        </div>
+<pre><span class="c"># .github/workflows/license-gate.yml</span>
+<span class="k">name</span>: <span class="s">License gate</span>
+<span class="k">on</span>: [<span class="s">pull_request</span>]
+
+<span class="k">jobs</span>:
+  <span class="k">licenses</span>:
+    <span class="k">runs-on</span>: <span class="s">ubuntu-latest</span>
+    <span class="k">steps</span>:
+      - <span class="k">uses</span>: <span class="s">actions/checkout@v4</span>
+      - <span class="k">uses</span>: <span class="s">actions/setup-node@v4</span>
+        <span class="k">with</span>:
+          <span class="k">node-version</span>: <span class="s">'20'</span>
+
+      - <span class="k">name</span>: <span class="s">License scan</span>
+        <span class="k">run</span>: <span class="s">npx dep-lens</span> <span class="p">\</span>
+            <span class="s">--json</span> <span class="p">\</span>
+            <span class="s">--fail-on gpl</span> <span class="p">\</span>
+            <span class="s">&gt; licenses.json</span>
+
+      - <span class="k">name</span>: <span class="s">HTML report</span>
+        <span class="k">if</span>: <span class="s">always()</span>
+        <span class="k">run</span>: <span class="s">npx dep-lens --html report.html</span>
+
+      - <span class="k">uses</span>: <span class="s">actions/upload-artifact@v4</span>
+        <span class="k">with</span>:
+          <span class="k">name</span>: <span class="s">license-report</span>
+          <span class="k">path</span>: <span class="s">|</span>
+            <span class="s">licenses.json</span>
+            <span class="s">report.html</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TUI KEYS ================= -->
+<section id="tui" style="padding-top:60px">
+  <div class="wrap">
+    <div class="section-head center reveal">
+      <span class="eyebrow">TUI</span>
+      <h2 class="h2">Klavyede <span class="accent">her şey</span> bir tuş uzakta</h2>
+      <p class="lede">Tüm etkileşim saf ASCII ve truecolor ANSI üzerinden. Hiç emoji yok, hiç fare gerekmez. Pager-up/down ile 10'er satır atla, g/G ile başa/sona uç.</p>
+    </div>
+
+    <div class="keys-grid" style="max-width:880px;margin:0 auto">
+      <div class="key-row reveal"><span class="key">↑ / ↓</span><span class="desc">Seçimi hareket ettir (pgup/pgdn 10 satır, g/G başa/sona)</span></div>
+      <div class="key-row reveal d1"><span class="key">enter</span><span class="desc">Paket detay paneli — lisans kaynağı, tavsiye metni</span></div>
+      <div class="key-row reveal d2"><span class="key">f</span><span class="desc">Paket adı, lisans veya kategoriye göre serbest metin filtresi</span></div>
+      <div class="key-row reveal d3"><span class="key">1-4</span><span class="desc">Hızlı filtre: Permissive / Weak / Strong / Unknown</span></div>
+      <div class="key-row reveal d4"><span class="key">0</span><span class="desc">Tüm filtreleri temizle</span></div>
+      <div class="key-row reveal d5"><span class="key">s</span><span class="desc">Sıralama sütununu döngüle (ad / sürüm / risk / kategori)</span></div>
+      <div class="key-row reveal d6"><span class="key">r</span><span class="desc">Sıralama yönünü tersine çevir</span></div>
+      <div class="key-row reveal d7"><span class="key">e</span><span class="desc">Dışa aktarma menüsü — JSON veya HTML dosya</span></div>
+      <div class="key-row reveal d8"><span class="key">h</span><span class="desc">Yardım katmanı (overlay)</span></div>
+      <div class="key-row reveal d8"><span class="key">q</span><span class="desc">Çık</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer>
+  <div class="wrap">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="#top" class="brand">
+          <span class="brand-mark">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:#10b981">
+              <path d="M7 8l-2.5 4 2.5 4M17 8l2.5 4-2.5 4M11 16l2-8"/>
+            </svg>
+          </span>
+          dep-lens
+        </a>
+        <p>9 ekosistem için bağımlılık ve lisans tarayıcısı. Rust çekirdek, Node.js Ink TUI. Saf ASCII, hiç emoji yok.</p>
+      </div>
+      <div class="footer-col">
+        <h5>Kaynaklar</h5>
+        <a href="https://github.com/lunanoir21/dep-lens" target="_blank" rel="noopener">GitHub Repo</a>
+        <a href="https://github.com/lunanoir21/dep-lens/blob/main/README.md" target="_blank" rel="noopener">README</a>
+        <a href="https://github.com/lunanoir21/dep-lens/issues" target="_blank" rel="noopener">Issue aç</a>
+        <a href="https://github.com/lunanoir21/dep-lens/releases" target="_blank" rel="noopener">Sürümler</a>
+      </div>
+      <div class="footer-col">
+        <h5>Paketler</h5>
+        <a href="https://www.npmjs.com/package/@lunanoir/dep-lens" target="_blank" rel="noopener">@lunanoir/dep-lens</a>
+        <a href="https://www.npmjs.com/package/@lunanoir/dep-lens-linux-x64" target="_blank" rel="noopener">linux-x64</a>
+        <a href="https://github.com/lunanoir21/dep-lens#install" target="_blank" rel="noopener">darwin-x64 (CI)</a>
+        <a href="https://github.com/lunanoir21/dep-lens#install" target="_blank" rel="noopener">darwin-arm64 (CI)</a>
+        <a href="https://github.com/lunanoir21/dep-lens#install" target="_blank" rel="noopener">win32-x64 (CI)</a>
+      </div>
+      <div class="footer-col">
+        <h5>Kurulum</h5>
+        <a href="https://github.com/lunanoir21/dep-lens#install" target="_blank" rel="noopener">npm install</a>
+        <a href="https://github.com/lunanoir21/dep-lens#install" target="_blank" rel="noopener">install.sh (Linux/macOS)</a>
+        <a href="https://github.com/lunanoir21/dep-lens#install" target="_blank" rel="noopener">install.ps1 (Windows)</a>
+        <a href="https://github.com/lunanoir21/dep-lens#development" target="_blank" rel="noopener">Kaynaktan derle</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2025 lunanoir21 · MIT License · bu sayfa resmi dep-lens landing page'dir</p>
+      <div class="badges">
+        <span class="badge">Rust core</span>
+        <span class="badge">Node ≥18.18</span>
+        <span class="badge">Linux · macOS · Windows</span>
+        <span class="badge">0 emoji</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ============================================================
+   REVEAL ON SCROLL
+   ============================================================ */
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('in');
+      io.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+/* ============================================================
+   COUNTER ANIMATION
+   ============================================================ */
+function animateCount(el, target, duration=1400) {
+  const start = performance.now();
+  const from = 0;
+  function tick(now) {
+    const p = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(from + (target - from) * eased);
+    if (p < 1) requestAnimationFrame(tick);
+    else el.textContent = target;
+  }
+  requestAnimationFrame(tick);
+}
+
+const counterIO = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const target = parseInt(e.target.dataset.count, 10);
+      animateCount(e.target, target);
+      counterIO.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.5 });
+document.querySelectorAll('[data-count]').forEach(el => counterIO.observe(el));
+
+/* ============================================================
+   TERMINAL DEMO ANIMATION
+   ============================================================ */
+function startTerminalDemo() {
+  // animate score bar
+  const bar = document.getElementById('tBar');
+  if (bar) setTimeout(() => bar.style.width = '84%', 300);
+
+  // animate ratio bar
+  document.querySelectorAll('.ratio-bar > span').forEach((span, i) => {
+    setTimeout(() => span.style.width = span.dataset.w + '%', 500 + i * 100);
+  });
+}
+const termIO = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      startTerminalDemo();
+      termIO.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.3 });
+const term = document.querySelector('.term');
+if (term) termIO.observe(term);
+
+/* ============================================================
+   COPY BUTTONS
+   ============================================================ */
+document.querySelectorAll('[data-copy]').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const text = btn.dataset.copy;
+    try {
+      await navigator.clipboard.writeText(text);
+      const orig = btn.textContent;
+      btn.textContent = '✓ kopyalandı';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1500);
+    } catch (e) {
+      const orig = btn.textContent;
+      btn.textContent = 'hata';
+      setTimeout(() => { btn.textContent = orig; }, 1200);
+    }
+  });
+});
+
+/* ============================================================
+   TABS
+   ============================================================ */
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const target = tab.dataset.tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    const panel = document.querySelector(`.tab-panel[data-panel="${target}"]`);
+    if (panel) panel.classList.add('active');
+  });
+});
+
+/* ============================================================
+   FEATURE HOVER GLOW (mouse tracking)
+   ============================================================ */
+document.querySelectorAll('.feature').forEach(card => {
+  card.addEventListener('mousemove', (e) => {
+    const rect = card.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    card.style.setProperty('--mx', x + '%');
+  });
+});
+
+/* ============================================================
+   SMOOTH NAV (active state on scroll)
+   ============================================================ */
+const navLinks = document.querySelectorAll('.nav-links a');
+const sections = ['features','ecosystems','licenses','usage','ci','tui'].map(id => document.getElementById(id)).filter(Boolean);
+const navIO = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const id = e.target.id;
+      navLinks.forEach(l => {
+        if (l.getAttribute('href') === '#' + id) l.style.color = 'var(--text)';
+        else l.style.color = '';
+      });
+    }
+  });
+}, { rootMargin: '-40% 0px -55% 0px' });
+sections.forEach(s => navIO.observe(s));
+</script>
+
+</body>
+</html>

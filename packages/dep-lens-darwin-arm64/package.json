@@ -1,6 +1,6 @@
 {
   "name": "@lunanoir/dep-lens-darwin-arm64",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "dep-lens native scanner binary for macOS arm64",
   "license": "MIT",
   "repository": {

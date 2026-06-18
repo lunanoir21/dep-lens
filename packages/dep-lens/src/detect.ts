@@ -17,14 +17,14 @@ export const ECOSYSTEM_SIGNATURES: readonly EcosystemSignature[] = [
     label: 'Python',
     files: ['pyproject.toml', 'requirements.txt', 'Pipfile', 'poetry.lock', 'uv.lock'],
   },
-  { id: 'ruby', label: 'Ruby', files: ['Gemfile', 'Gemfile.lock'] },
-  { id: 'php', label: 'PHP', files: ['composer.json'] },
+  { id: 'ruby', label: 'Ruby', files: ['Gemfile.lock'] },
+  { id: 'php', label: 'PHP', files: ['composer.lock'] },
   {
     id: 'java',
     label: 'Java',
     files: ['pom.xml', 'build.gradle', 'build.gradle.kts', 'gradle.lockfile'],
   },
-  { id: 'dart', label: 'Dart / Flutter', files: ['pubspec.yaml'] },
+  { id: 'dart', label: 'Dart / Flutter', files: ['pubspec.lock'] },
   { id: 'cpp', label: 'C/C++', files: ['vcpkg.json', 'conanfile.txt'] },
 ];
 

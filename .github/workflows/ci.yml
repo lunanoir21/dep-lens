@@ -23,13 +23,16 @@ jobs:
         run: cargo test
 
   node:
-    name: Node.js (build, test)
+    name: Node.js ${{ matrix.node }} (build, test)
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [18, 20, 22]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ matrix.node }}
       - name: Install dependencies
         run: npm install
       - name: Build and test

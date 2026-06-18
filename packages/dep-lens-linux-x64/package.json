@@ -1,6 +1,6 @@
 {
   "name": "@lunanoir/dep-lens-linux-x64",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "dep-lens native scanner binary for Linux x64",
   "license": "MIT",
   "repository": {
