@@ -1,5 +1,9 @@
 # dep-lens
 
+![built with Claude Code](https://img.shields.io/badge/built%20with-Claude%20Code-D97757)
+![AI-assisted](https://img.shields.io/badge/AI--assisted-yes-e6edf3)
+![directed by human](https://img.shields.io/badge/directed%20by-human-3d444d)
+
 Scan your project's third-party dependencies across **9 ecosystems**, classify
 every license (permissive / weak copyleft / strong copyleft / unknown),
 score commercial-use risk, and browse the results in a fast, colorful
@@ -7,6 +11,9 @@ terminal UI. Rust core for scanning, Node.js wrapper for a fully interactive
 [Ink](https://github.com/vadimdemedes/ink)-based TUI.
 
 ![dep-lens terminal UI](docs/assets/tui-screenshot.png)
+
+> [!IMPORTANT]
+> **Built with AI.** This project was largely written with [Claude Code](https://claude.com/claude-code). The ideas, design decisions, testing and final review are mine.
 
 ## Supported ecosystems
 
